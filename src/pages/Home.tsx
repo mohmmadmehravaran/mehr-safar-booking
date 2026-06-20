@@ -27,6 +27,14 @@ export default function Home() {
   };
   const handleSearch = () => applyCity(searchInput);
   const clearCity = () => { setFilters((prev) => ({ ...prev, city: '', search: '' })); setSearchInput(''); };
+  // When the city text is cleared (manually or via the ✕ button), reset the city
+  // filter so the home page shows all default hotel cards again.
+  const handleCityInputChange = (v: string) => {
+    setSearchInput(v);
+    if (v.trim() === '') {
+      setFilters((prev) => ({ ...prev, city: '', search: '' }));
+    }
+  };
   const handleCheckInChange = (date: string) => setFilters((prev) => ({ ...prev, checkIn: date, checkOut: prev.checkOut && prev.checkOut <= date ? '' : prev.checkOut }));
   const handleCheckOutChange = (date: string) => setFilters((prev) => ({ ...prev, checkOut: date }));
 
@@ -82,7 +90,7 @@ export default function Home() {
                   <div className="flex-1 relative">
                     <CitySearchSelect
                       value={searchInput}
-                      onChange={setSearchInput}
+                      onChange={handleCityInputChange}
                       onSelect={applyCity}
                       placeholder={theme.texts.searchPlaceholder}
                     />
