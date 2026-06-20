@@ -36,6 +36,7 @@ interface AppContextType {
   registerUser: (user: Omit<SiteUser, 'id' | 'createdAt'>) => { success: boolean; message: string };
   loginUser: (emailOrPhone: string, password: string) => { success: boolean; message: string };
   loginWithPhone: (phone: string) => { success: boolean; message: string };
+  updateProfile: (data: { fullName: string; email: string; phone: string }) => { success: boolean; message: string };
   logoutUser: () => void;
 }
 
@@ -210,6 +211,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { success: true, message: 'حساب شما ساخته شد و وارد شدید.' };
   }, [users]);
 
+  const updateProfile = useCallback((data: { fullName: string; email: string; phone: string }) => {
+    if (!currentUser) return { success: false, message: 'ابتدا وارد شوید.' };
+
+    const fullName = data.fullName.trim();
+    const email = data.email.trim().toLowerCase();
+    const phone = data.phone.trim().replace(/[^\d]/g, '');
+
+    if (!fullName) return { success: false, message: 'نام و نام خانوادگی را وارد کنید.' };
+    if (!/^09\d{9}$/.test(phone)) return { success: false, message: 'شماره موبایل معتبر نیست.' };
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { success: false, message: 'ایمیل معتبر نیست.' };
+    }
+    if (users.some((u) => u.id !== currentUser.id && (u.phone === phone || (email && u.email.toLowerCase() === email)))) {
+      return { success: false, message: 'این شماره موبایل یا ایمیل قبلاً ثبت شده است.' };
+    }
+
+    const updated: SiteUser = { ...currentUser, fullName, email: email || currentUser.email, phone };
+    const nextUsers = users.map((u) => (u.id === currentUser.id ? updated : u));
+    setUsers(nextUsers);
+    setCurrentUser(updated);
+    localStorage.setItem('mehrsafar-users', JSON.stringify(nextUsers));
+    localStorage.setItem('mehrsafar-current-user', JSON.stringify(updated));
+    return { success: true, message: 'اطلاعات حساب با موفقیت به‌روزرسانی شد.' };
+  }, [users, currentUser]);
+
   const logoutUser = useCallback(() => {
     setCurrentUser(null);
     localStorage.removeItem('mehrsafar-current-user');
@@ -239,6 +265,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         registerUser,
         loginUser,
         loginWithPhone,
+        updateProfile,
         logoutUser,
       }}
     >
