@@ -145,7 +145,7 @@ export default function Home() {
       </section>
 
       {/* ── HOTELS ── */}
-      <section id="hotels" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <section id="hotels" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" style={{ scrollMarginTop: theme.sizes.headerHeight + 24 }}>
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters appear only after the user has entered a city AND both check-in and check-out dates */}
           {filters.city && filters.checkIn && filters.checkOut && (
