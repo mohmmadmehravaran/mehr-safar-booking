@@ -1,12 +1,13 @@
 import { useState, useRef } from 'react';
 import {
   Palette, Type, Ruler, FileText, Plus, Trash2, RotateCcw,
-  ChevronDown, ChevronUp, Eye, Monitor, Smartphone, Tablet, X, Upload, Link2
+  ChevronDown, ChevronUp, Eye, Monitor, Smartphone, Tablet, X, Upload, Link2, Globe
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import ColorPicker from './ColorPicker';
 import DraggableSize from './DraggableSize';
 import { motion, AnimatePresence } from 'framer-motion';
+import { downloadPublishedConfig } from '../../utils/sitePublish';
 
 type Section = 'colors' | 'sizes' | 'fonts' | 'texts';
 
@@ -79,6 +80,7 @@ export default function AppearancePanel() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showPublishInfo, setShowPublishInfo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggle = (s: Section) => setOpenSections((p) => ({ ...p, [s]: !p[s] }));
@@ -146,6 +148,14 @@ export default function AppearancePanel() {
           >
             <Eye className="w-3.5 h-3.5" />
             پیش‌نمایش
+          </button>
+          <button
+            onClick={() => { downloadPublishedConfig(); setShowPublishInfo(true); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
+            title="ساخت فایل انتشار برای نمایش تغییرات روی همهٔ دستگاه‌ها (موبایل و دسکتاپ)"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            انتشار سراسری
           </button>
           <button
             onClick={() => setShowResetConfirm(true)}
@@ -675,6 +685,31 @@ export default function AppearancePanel() {
                 بازنشانی
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Publish info */}
+      {showPublishInfo && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                <Globe className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-gray-900">انتشار سراسری تغییرات</h3>
+            </div>
+            <p className="text-sm text-gray-600 leading-6 mb-3">
+              فایل <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">published-site-config.json</span> دانلود شد.
+              برای اینکه این تغییرات روی <b>همهٔ دستگاه‌ها (موبایل و دسکتاپ)</b> و برای همهٔ بازدیدکنندگان نمایش داده شود،
+              کافی است این فایل را در <b>ریشهٔ مخزن گیت‌هاب</b> قرار دهید (همان‌جا که <span className="font-mono text-xs">index.html</span> هست) و ذخیره کنید.
+            </p>
+            <p className="text-xs text-gray-400 mb-4">
+              نکته: تغییرات ظاهری به‌صورت زنده فقط در همین مرورگر ذخیره می‌شوند؛ «انتشار سراسری» آن‌ها را برای بقیه هم اعمال می‌کند.
+            </p>
+            <button onClick={() => setShowPublishInfo(false)} className="w-full py-2.5 bg-emerald-600 text-white rounded-xl text-sm hover:bg-emerald-700 font-medium">
+              متوجه شدم
+            </button>
           </div>
         </div>
       )}
