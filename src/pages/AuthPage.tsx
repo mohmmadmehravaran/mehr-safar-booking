@@ -61,7 +61,10 @@ export default function AuthPage() {
           <div
             role="alert"
             aria-live="assertive"
-            className={`mb-4 p-3.5 rounded-2xl text-sm font-semibold ${alert.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}
+            className="mb-4 p-3.5 rounded-2xl text-sm font-semibold"
+            style={alert.ok
+              ? { backgroundColor: theme.colors.primaryLight, color: theme.colors.primary }
+              : { backgroundColor: '#fee2e2', color: '#dc2626' }}
           >
             {alert.ok ? '✓ ' : '✗ '}{alert.msg}
           </div>
