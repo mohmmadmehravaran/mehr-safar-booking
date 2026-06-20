@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, Award, TrendingUp, Heart } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
@@ -19,17 +19,29 @@ export default function Home() {
   const today = getTodayJalali();
   const todayISO = gregorianToISO(jalaliToGregorian(today));
 
-  // Filter hotels by the chosen city and reveal that city's hotels.
+  // Filter hotels by the chosen city (no scroll here — we only scroll once city + both dates are set).
   const applyCity = (city: string) => {
     const term = city.trim();
     setFilters((prev) => ({ ...prev, city: term, search: '' }));
     setSearchInput(term);
-    setTimeout(() => document.getElementById('hotels')?.scrollIntoView({ behavior: 'smooth' }), 60);
   };
   const handleSearch = () => applyCity(searchInput);
   const clearCity = () => { setFilters((prev) => ({ ...prev, city: '', search: '' })); setSearchInput(''); };
   const handleCheckInChange = (date: string) => setFilters((prev) => ({ ...prev, checkIn: date, checkOut: prev.checkOut && prev.checkOut <= date ? '' : prev.checkOut }));
   const handleCheckOutChange = (date: string) => setFilters((prev) => ({ ...prev, checkOut: date }));
+
+  // Scroll to the hotel cards only after the user has chosen a city AND both check-in and check-out dates.
+  const didScrollRef = useRef(false);
+  useEffect(() => {
+    const ready = Boolean(filters.city && filters.checkIn && filters.checkOut);
+    if (ready && !didScrollRef.current) {
+      didScrollRef.current = true;
+      setTimeout(() => document.getElementById('hotels')?.scrollIntoView({ behavior: 'smooth' }), 80);
+    } else if (!ready) {
+      // Reset so the scroll fires again next time the selection is completed.
+      didScrollRef.current = false;
+    }
+  }, [filters.city, filters.checkIn, filters.checkOut]);
 
   const featuredHotels = filteredHotels.filter((h) => h.isFeatured);
   const regularHotels = filteredHotels.filter((h) => !h.isFeatured);
