@@ -2,7 +2,7 @@ import { useState, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Hotel, CalendarDays, MessageSquare, LogIn, Plus, Edit2, Trash2, Check, X, Eye, Star,
-  DollarSign, AlertCircle, Paintbrush
+  DollarSign, AlertCircle, Paintbrush, Users, Phone, Mail, Search
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
@@ -13,14 +13,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AppearancePanel from '../components/admin/AppearancePanel';
 import { useDocumentTitle } from '../utils/useDocumentTitle';
 
-type Tab = 'dashboard' | 'hotels' | 'bookings' | 'reviews' | 'appearance';
+type Tab = 'dashboard' | 'hotels' | 'bookings' | 'users' | 'reviews' | 'appearance';
 
 export default function AdminPanel() {
   const navigate = useNavigate();
-  const { isAdmin, loginAdmin, logoutAdmin, hotels, bookings, reviews, addHotel, updateHotel, deleteHotel, updateBookingStatus } = useApp();
+  const { isAdmin, loginAdmin, logoutAdmin, hotels, bookings, reviews, users, addHotel, updateHotel, deleteHotel, updateBookingStatus } = useApp();
   const { setIsVisualEditing } = useTheme();
   useDocumentTitle('پنل مدیریت');
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [userSearch, setUserSearch] = useState('');
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
 
@@ -157,6 +158,7 @@ export default function AdminPanel() {
     { id: 'dashboard', label: 'داشبورد', icon: <LayoutDashboard className="w-5 h-5" /> },
     { id: 'hotels', label: 'مدیریت هتل‌ها', icon: <Hotel className="w-5 h-5" /> },
     { id: 'bookings', label: 'رزروها', icon: <CalendarDays className="w-5 h-5" /> },
+    { id: 'users', label: 'کاربران', icon: <Users className="w-5 h-5" /> },
     { id: 'reviews', label: 'نظرات', icon: <MessageSquare className="w-5 h-5" /> },
     { id: 'appearance', label: 'ظاهر سایت', icon: <Paintbrush className="w-5 h-5" /> },
   ];
@@ -204,7 +206,7 @@ export default function AdminPanel() {
               {activeTab === 'dashboard' && (
                 <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                   <h2 className="text-xl font-bold text-gray-900 mb-6">داشبورد</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                     <div className="bg-white rounded-2xl border border-gray-100 p-5">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-sm text-gray-500">کل هتل‌ها</span>
@@ -240,6 +242,15 @@ export default function AdminPanel() {
                         </div>
                       </div>
                       <div className="text-2xl font-bold text-gray-900">{reviews.length}</div>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm text-gray-500">کاربران</span>
+                        <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center">
+                          <Users className="w-5 h-5 text-teal-600" />
+                        </div>
+                      </div>
+                      <div className="text-2xl font-bold text-gray-900">{users.length}</div>
                     </div>
                   </div>
 
@@ -417,6 +428,118 @@ export default function AdminPanel() {
                   </div>
                 </motion.div>
               )}
+
+              {activeTab === 'users' && (() => {
+                const q = userSearch.trim().toLowerCase();
+                const filteredUsers = users.filter((u) =>
+                  !q || u.fullName.toLowerCase().includes(q) || u.phone.includes(q) || u.email.toLowerCase().includes(q)
+                );
+                const bookingsOf = (u: typeof users[number]) =>
+                  bookings.filter((b) => b.guestEmail.toLowerCase() === u.email.toLowerCase() || b.guestPhone === u.phone).length;
+                const realEmail = (e: string) => (e.endsWith('@mehrsafar.local') ? '' : e);
+                const exportCsv = () => {
+                  const header = ['شناسه', 'نام و نام خانوادگی', 'موبایل', 'ایمیل', 'تاریخ عضویت', 'تعداد رزرو'];
+                  const rows = users.map((u) => [u.id, u.fullName, u.phone, realEmail(u.email), formatJalali(u.createdAt), bookingsOf(u)]);
+                  const csv = '\ufeff' + [header, ...rows]
+                    .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
+                    .join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                  const a = document.createElement('a');
+                  a.href = URL.createObjectURL(blob);
+                  a.download = 'mehrsafar-users.csv';
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                };
+                return (
+                  <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">کاربران ثبت‌نام‌شده</h2>
+                        <p className="text-sm text-gray-500 mt-1">{users.length} کاربر در سامانه ثبت‌نام کرده‌اند</p>
+                      </div>
+                      <button
+                        onClick={exportCsv}
+                        disabled={users.length === 0}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                      >
+                        خروجی Excel/CSV
+                      </button>
+                    </div>
+
+                    {/* search */}
+                    <div className="relative mb-5 max-w-sm">
+                      <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                        placeholder="جستجو بر اساس نام، موبایل یا ایمیل..."
+                        className="w-full pr-10 pl-4 py-2.5 rounded-xl text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-gray-900"
+                      />
+                    </div>
+
+                    {users.length === 0 ? (
+                      <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                        <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                        <p className="text-sm text-gray-500">هنوز هیچ کاربری ثبت‌نام نکرده است.</p>
+                      </div>
+                    ) : (
+                      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-gray-50 text-gray-500 text-xs">
+                                <th className="text-right font-medium px-4 py-3">#</th>
+                                <th className="text-right font-medium px-4 py-3">کاربر</th>
+                                <th className="text-right font-medium px-4 py-3">موبایل</th>
+                                <th className="text-right font-medium px-4 py-3">ایمیل</th>
+                                <th className="text-right font-medium px-4 py-3">تاریخ عضویت</th>
+                                <th className="text-center font-medium px-4 py-3">رزروها</th>
+                                <th className="text-right font-medium px-4 py-3">شناسه</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredUsers.map((u, i) => {
+                                const email = realEmail(u.email);
+                                return (
+                                  <tr key={u.id} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
+                                    <td className="px-4 py-3 text-gray-400">{i + 1}</td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex items-center gap-2.5">
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0">
+                                          {u.fullName.charAt(0)}
+                                        </div>
+                                        <span className="font-medium text-gray-900">{u.fullName}</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700" dir="ltr" style={{ textAlign: 'right' }}>
+                                      <span className="inline-flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-gray-400" />{u.phone}</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700" dir="ltr" style={{ textAlign: 'right' }}>
+                                      {email
+                                        ? <span className="inline-flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-gray-400" />{email}</span>
+                                        : <span className="text-gray-400">— ثبت نشده —</span>}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatJalali(u.createdAt)}</td>
+                                    <td className="px-4 py-3 text-center">
+                                      <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
+                                        {bookingsOf(u)}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-400 text-xs">{u.id}</td>
+                                  </tr>
+                                );
+                              })}
+                              {filteredUsers.length === 0 && (
+                                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500">کاربری با این مشخصات یافت نشد.</td></tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })()}
 
               {activeTab === 'reviews' && (
                 <motion.div key="reviews" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
