@@ -32,6 +32,8 @@ interface AppContextType {
   logoutAdmin: () => void;
   adminName: string;
   users: SiteUser[];
+  adminUpdateUser: (id: number, data: { fullName: string; phone: string; email: string; password?: string }) => { success: boolean; message: string };
+  adminDeleteUser: (id: number) => void;
   currentUser: SiteUser | null;
   registerUser: (user: Omit<SiteUser, 'id' | 'createdAt'>) => { success: boolean; message: string };
   loginUser: (emailOrPhone: string, password: string) => { success: boolean; message: string };
@@ -236,6 +238,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { success: true, message: 'اطلاعات حساب با موفقیت به‌روزرسانی شد.' };
   }, [users, currentUser]);
 
+  const adminUpdateUser = useCallback((id: number, data: { fullName: string; phone: string; email: string; password?: string }) => {
+    const target = users.find((u) => u.id === id);
+    if (!target) return { success: false, message: 'کاربر یافت نشد.' };
+
+    const fullName = data.fullName.trim();
+    const phone = data.phone.trim().replace(/[^\d]/g, '');
+    const email = data.email.trim().toLowerCase();
+
+    if (!fullName) return { success: false, message: 'نام و نام خانوادگی را وارد کنید.' };
+    if (!/^09\d{9}$/.test(phone)) return { success: false, message: 'شماره موبایل معتبر نیست.' };
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { success: false, message: 'ایمیل معتبر نیست.' };
+    }
+    if (users.some((u) => u.id !== id && (u.phone === phone || (email && u.email.toLowerCase() === email)))) {
+      return { success: false, message: 'این شماره موبایل یا ایمیل برای کاربر دیگری ثبت شده است.' };
+    }
+
+    const updated: SiteUser = {
+      ...target,
+      fullName,
+      phone,
+      email: email || target.email,
+      password: data.password && data.password.length > 0 ? data.password : target.password,
+    };
+    const nextUsers = users.map((u) => (u.id === id ? updated : u));
+    setUsers(nextUsers);
+    localStorage.setItem('mehrsafar-users', JSON.stringify(nextUsers));
+    // keep the logged-in session in sync if the admin edited the current user
+    if (currentUser && currentUser.id === id) {
+      setCurrentUser(updated);
+      localStorage.setItem('mehrsafar-current-user', JSON.stringify(updated));
+    }
+    return { success: true, message: 'اطلاعات کاربر با موفقیت ویرایش شد.' };
+  }, [users, currentUser]);
+
+  const adminDeleteUser = useCallback((id: number) => {
+    const nextUsers = users.filter((u) => u.id !== id);
+    setUsers(nextUsers);
+    localStorage.setItem('mehrsafar-users', JSON.stringify(nextUsers));
+    if (currentUser && currentUser.id === id) {
+      setCurrentUser(null);
+      localStorage.removeItem('mehrsafar-current-user');
+    }
+  }, [users, currentUser]);
+
   const logoutUser = useCallback(() => {
     setCurrentUser(null);
     localStorage.removeItem('mehrsafar-current-user');
@@ -261,6 +308,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         logoutAdmin,
         adminName,
         users,
+        adminUpdateUser,
+        adminDeleteUser,
         currentUser,
         registerUser,
         loginUser,

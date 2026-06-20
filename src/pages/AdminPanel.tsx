@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
-import { Hotel as HotelType, AccommodationType, ReviewLevel } from '../types';
+import { Hotel as HotelType, AccommodationType, ReviewLevel, SiteUser } from '../types';
 import { formatJalali } from '../utils/date';
 import { PROVINCE_NAMES, getCitiesForProvince, findProvinceOfCity } from '../data/iranCities';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,11 +17,14 @@ type Tab = 'dashboard' | 'hotels' | 'bookings' | 'users' | 'reviews' | 'appearan
 
 export default function AdminPanel() {
   const navigate = useNavigate();
-  const { isAdmin, loginAdmin, logoutAdmin, hotels, bookings, reviews, users, addHotel, updateHotel, deleteHotel, updateBookingStatus } = useApp();
+  const { isAdmin, loginAdmin, logoutAdmin, hotels, bookings, reviews, users, adminUpdateUser, adminDeleteUser, addHotel, updateHotel, deleteHotel, updateBookingStatus } = useApp();
   const { setIsVisualEditing } = useTheme();
   useDocumentTitle('پنل مدیریت');
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [userSearch, setUserSearch] = useState('');
+  const [editingUser, setEditingUser] = useState<SiteUser | null>(null);
+  const [userForm, setUserForm] = useState({ fullName: '', phone: '', email: '', password: '' });
+  const [userAlert, setUserAlert] = useState<{ ok: boolean; msg: string } | null>(null);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
 
@@ -450,6 +453,23 @@ export default function AdminPanel() {
                   a.click();
                   URL.revokeObjectURL(a.href);
                 };
+                const openEditUser = (u: SiteUser) => {
+                  setUserForm({ fullName: u.fullName, phone: u.phone, email: realEmail(u.email), password: '' });
+                  setUserAlert(null);
+                  setEditingUser(u);
+                };
+                const saveUser = (e: React.FormEvent) => {
+                  e.preventDefault();
+                  if (!editingUser) return;
+                  const r = adminUpdateUser(editingUser.id, userForm);
+                  setUserAlert({ ok: r.success, msg: r.message });
+                  if (r.success) setEditingUser(null);
+                };
+                const removeUser = (u: SiteUser) => {
+                  if (window.confirm(`آیا از حذف «${u.fullName}» مطمئن هستید؟ این عمل قابل بازگشت نیست.`)) {
+                    adminDeleteUser(u.id);
+                  }
+                };
                 return (
                   <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
@@ -495,6 +515,7 @@ export default function AdminPanel() {
                                 <th className="text-right font-medium px-4 py-3">تاریخ عضویت</th>
                                 <th className="text-center font-medium px-4 py-3">رزروها</th>
                                 <th className="text-right font-medium px-4 py-3">شناسه</th>
+                                <th className="text-center font-medium px-4 py-3">عملیات</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -526,17 +547,84 @@ export default function AdminPanel() {
                                       </span>
                                     </td>
                                     <td className="px-4 py-3 text-gray-400 text-xs">{u.id}</td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex items-center justify-center gap-1.5">
+                                        <button onClick={() => openEditUser(u)} title="ویرایش" className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors">
+                                          <Edit2 className="w-4 h-4" />
+                                        </button>
+                                        <button onClick={() => removeUser(u)} title="حذف" className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors">
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </td>
                                   </tr>
                                 );
                               })}
                               {filteredUsers.length === 0 && (
-                                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500">کاربری با این مشخصات یافت نشد.</td></tr>
+                                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500">کاربری با این مشخصات یافت نشد.</td></tr>
                               )}
                             </tbody>
                           </table>
                         </div>
                       </div>
                     )}
+
+                    {/* Edit user modal */}
+                    <AnimatePresence>
+                      {editingUser && (
+                        <motion.div
+                          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                          onClick={() => setEditingUser(null)}
+                        >
+                          <motion.div
+                            className="bg-white rounded-2xl w-full max-w-md shadow-xl"
+                            initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+                              <h3 className="font-bold text-gray-900">ویرایش کاربر</h3>
+                              <button onClick={() => setEditingUser(null)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                                <X className="w-5 h-5" />
+                              </button>
+                            </div>
+                            <form onSubmit={saveUser} className="p-5 space-y-4">
+                              {userAlert && !userAlert.ok && (
+                                <div className="p-3 rounded-xl text-sm font-medium bg-red-50 text-red-600">✗ {userAlert.msg}</div>
+                              )}
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 mb-1.5">نام و نام خانوادگی</label>
+                                <input value={userForm.fullName} onChange={(e) => setUserForm((p) => ({ ...p, fullName: e.target.value }))}
+                                  className="w-full px-4 py-2.5 rounded-xl text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 mb-1.5">شماره موبایل</label>
+                                <input value={userForm.phone} onChange={(e) => setUserForm((p) => ({ ...p, phone: e.target.value }))} dir="ltr" inputMode="tel"
+                                  className="w-full px-4 py-2.5 rounded-xl text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 text-right" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 mb-1.5">ایمیل (اختیاری)</label>
+                                <input value={userForm.email} onChange={(e) => setUserForm((p) => ({ ...p, email: e.target.value }))} dir="ltr" inputMode="email" placeholder="example@mail.com"
+                                  className="w-full px-4 py-2.5 rounded-xl text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 text-right" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 mb-1.5">رمز عبور جدید (خالی = بدون تغییر)</label>
+                                <input value={userForm.password} onChange={(e) => setUserForm((p) => ({ ...p, password: e.target.value }))} type="text" dir="ltr" placeholder="••••••"
+                                  className="w-full px-4 py-2.5 rounded-xl text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 text-right" />
+                              </div>
+                              <div className="flex gap-2 pt-1">
+                                <button type="submit" className="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-colors">
+                                  ذخیره تغییرات
+                                </button>
+                                <button type="button" onClick={() => setEditingUser(null)} className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors">
+                                  انصراف
+                                </button>
+                              </div>
+                            </form>
+                          </motion.div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 );
               })()}
