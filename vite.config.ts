@@ -12,6 +12,13 @@ const __dirname = path.dirname(__filename);
 export default defineConfig({
   base: "./",
   plugins: [react(), tailwindcss(), viteSingleFile()],
+  build: {
+    rollupOptions: {
+      // Source HTML entry lives in index.template.html so the built single-file
+      // bundle can be published as the repository-root index.html (GitHub Pages).
+      input: path.resolve(__dirname, "index.template.html"),
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
