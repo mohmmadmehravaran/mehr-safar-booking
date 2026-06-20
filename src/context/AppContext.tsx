@@ -35,6 +35,7 @@ interface AppContextType {
   currentUser: SiteUser | null;
   registerUser: (user: Omit<SiteUser, 'id' | 'createdAt'>) => { success: boolean; message: string };
   loginUser: (emailOrPhone: string, password: string) => { success: boolean; message: string };
+  loginWithPhone: (phone: string) => { success: boolean; message: string };
   logoutUser: () => void;
 }
 
@@ -177,6 +178,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { success: true, message: 'ورود با موفقیت انجام شد.' };
   }, [users]);
 
+  // Phone-first login: a single mobile number is enough.
+  // If the number already belongs to a user we log them in; otherwise we create
+  // a lightweight account on the spot so the flow stays one step.
+  const loginWithPhone = useCallback((phone: string) => {
+    const normalizedPhone = phone.trim().replace(/[^\d]/g, '');
+    if (!/^09\d{9}$/.test(normalizedPhone)) {
+      return { success: false, message: 'شماره موبایل معتبر نیست. نمونه: ۰۹۱۲۱۲۳۴۵۶۷' };
+    }
+
+    const found = users.find((u) => u.phone === normalizedPhone);
+    if (found) {
+      setCurrentUser(found);
+      localStorage.setItem('mehrsafar-current-user', JSON.stringify(found));
+      return { success: true, message: 'ورود با موفقیت انجام شد.' };
+    }
+
+    const newUser: SiteUser = {
+      id: Date.now(),
+      fullName: 'کاربر مهر سفر',
+      phone: normalizedPhone,
+      email: `${normalizedPhone}@mehrsafar.local`,
+      password: '',
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    const nextUsers = [...users, newUser];
+    setUsers(nextUsers);
+    setCurrentUser(newUser);
+    localStorage.setItem('mehrsafar-users', JSON.stringify(nextUsers));
+    localStorage.setItem('mehrsafar-current-user', JSON.stringify(newUser));
+    return { success: true, message: 'حساب شما ساخته شد و وارد شدید.' };
+  }, [users]);
+
   const logoutUser = useCallback(() => {
     setCurrentUser(null);
     localStorage.removeItem('mehrsafar-current-user');
@@ -205,6 +238,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         currentUser,
         registerUser,
         loginUser,
+        loginWithPhone,
         logoutUser,
       }}
     >
