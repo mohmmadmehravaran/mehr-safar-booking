@@ -84,18 +84,6 @@ export default function FilterPanel() {
   // We define the filter body content directly as JSX to prevent remounting bugs
   const renderFilterBody = (
     <div className="space-y-6">
-      {hasActiveFilters && (
-        <motion.button
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          onClick={clearFilters}
-          className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors cursor-pointer"
-        >
-          <X className="w-4 h-4" />
-          پاک کردن فیلترها
-        </motion.button>
-      )}
-
       {/* Price (moved to top) */}
       <div>
         <button onClick={() => toggleSection('price')} className="flex items-center justify-between w-full mb-3 cursor-pointer">
@@ -312,9 +300,17 @@ export default function FilterPanel() {
       >
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-bold" style={{ color: theme.colors.textPrimary }}>فیلترها</h2>
-          <span className="text-xs px-3 py-1 rounded-full font-medium" style={{ backgroundColor: theme.colors.primaryLight, color: theme.colors.primary }}>
-            {filteredHotels.length} هتل
-          </span>
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <button onClick={clearFilters} className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 transition-colors cursor-pointer whitespace-nowrap">
+                <X className="w-3.5 h-3.5" />
+                پاک کردن
+              </button>
+            )}
+            <span className="text-xs px-3 py-1 rounded-full font-medium whitespace-nowrap" style={{ backgroundColor: theme.colors.primaryLight, color: theme.colors.primary }}>
+              {filteredHotels.length} هتل
+            </span>
+          </div>
         </div>
         {renderFilterBody}
       </div>
@@ -340,9 +336,17 @@ export default function FilterPanel() {
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-bold" style={{ color: theme.colors.textPrimary }}>فیلترها</h2>
-                <button onClick={() => setMobileOpen(false)} aria-label="بستن فیلترها" className="p-2 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">
-                  <X className="w-5 h-5" aria-hidden="true" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {hasActiveFilters && (
+                    <button onClick={clearFilters} className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 transition-colors cursor-pointer whitespace-nowrap">
+                      <X className="w-3.5 h-3.5" />
+                      پاک کردن
+                    </button>
+                  )}
+                  <button onClick={() => setMobileOpen(false)} aria-label="بستن فیلترها" className="p-2 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">
+                    <X className="w-5 h-5" aria-hidden="true" />
+                  </button>
+                </div>
               </div>
               {renderFilterBody}
             </motion.div>
