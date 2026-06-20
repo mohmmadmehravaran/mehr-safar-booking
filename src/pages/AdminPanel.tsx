@@ -18,7 +18,7 @@ type Tab = 'dashboard' | 'hotels' | 'bookings' | 'users' | 'reviews' | 'appearan
 export default function AdminPanel() {
   const navigate = useNavigate();
   const { isAdmin, loginAdmin, logoutAdmin, hotels, bookings, reviews, users, adminUpdateUser, adminDeleteUser, addHotel, updateHotel, deleteHotel, updateBookingStatus } = useApp();
-  const { setIsVisualEditing } = useTheme();
+  const { setIsVisualEditing, theme } = useTheme();
   useDocumentTitle('پنل مدیریت');
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [userSearch, setUserSearch] = useState('');
@@ -112,8 +112,8 @@ export default function AdminPanel() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-gray-100 shadow-lg p-8 w-full max-w-md">
           <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <LogIn className="w-8 h-8 text-emerald-600" />
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: theme.colors.primaryLight }}>
+              <LogIn className="w-8 h-8" style={{ color: theme.colors.primary }} />
             </div>
             <h2 className="text-xl font-bold text-gray-900">ورود به پنل مدیریت</h2>
             <p className="text-sm text-gray-500 mt-1">لطفاً اطلاعات کاربری خود را وارد کنید</p>
@@ -125,7 +125,7 @@ export default function AdminPanel() {
                 type="text"
                 value={loginForm.username}
                 onChange={(e) => setLoginForm((prev) => ({ ...prev, username: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="admin"
               />
             </div>
@@ -135,7 +135,7 @@ export default function AdminPanel() {
                 type="password"
                 value={loginForm.password}
                 onChange={(e) => setLoginForm((prev) => ({ ...prev, password: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="••••••"
               />
             </div>
@@ -145,7 +145,7 @@ export default function AdminPanel() {
                 {loginError}
               </div>
             )}
-            <button type="submit" className="w-full py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors">
+            <button type="submit" className="w-full py-2.5 text-white font-medium rounded-xl transition-opacity hover:opacity-90" style={{ background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})` }}>
               ورود
             </button>
           </form>
