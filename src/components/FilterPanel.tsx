@@ -54,17 +54,16 @@ export default function FilterPanel() {
   ), [filters]);
 
   const clearFilters = () => {
-    setFilters({
+    setFilters((prev) => ({
+      ...prev,
       stars: [],
       types: [],
       reviews: [],
       minPrice: 0,
       maxPrice: 10000000,
-      city: '',
       search: '',
-      checkIn: '',
-      checkOut: '',
-    });
+      // city, checkIn و checkOut عمداً حفظ می‌شوند تا با پاک کردن فیلتر، شهر و تاریخ ورود/خروج پاک نشوند
+    }));
   };
 
   const handleMinPrice = (newMin: number) => {
