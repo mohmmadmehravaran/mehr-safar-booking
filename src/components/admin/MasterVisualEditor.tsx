@@ -1594,6 +1594,13 @@ function CardsBuilderPanel({ onClose }: { onClose: () => void }) {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
 
+  // Resizable window size — the user can drag the bottom-left grip to resize.
+  const [size, setSize] = useState<{ w: number; h: number }>(() => ({
+    w: Math.min(440, Math.round((typeof window !== 'undefined' ? window.innerWidth : 440) * 0.94)),
+    h: Math.min(640, Math.round((typeof window !== 'undefined' ? window.innerHeight : 640) * 0.82)),
+  }));
+  const resizeRef = useRef<{ sx: number; sy: number; ow: number; oh: number; left: number } | null>(null);
+
   const startDrag = (e: React.PointerEvent) => {
     const win = (e.currentTarget as HTMLElement).closest('[data-cards-panel-root]') as HTMLElement | null;
     if (!win) return;
@@ -1612,20 +1619,49 @@ function CardsBuilderPanel({ onClose }: { onClose: () => void }) {
   };
   const endDrag = () => { dragRef.current = null; };
 
+  // Resize from the bottom-LEFT grip (panel sits on the left in RTL, so the
+  // left edge moves while top stays fixed): width grows leftwards, height down.
+  const startResize = (e: React.PointerEvent) => {
+    const win = (e.currentTarget as HTMLElement).closest('[data-cards-panel-root]') as HTMLElement | null;
+    if (!win) return;
+    const rect = win.getBoundingClientRect();
+    resizeRef.current = { sx: e.clientX, sy: e.clientY, ow: rect.width, oh: rect.height, left: rect.left };
+    // Pin the current position so the right edge stays put while we resize left.
+    setPos({ x: rect.left, y: rect.top });
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const onResize = (e: React.PointerEvent) => {
+    const r = resizeRef.current;
+    if (!r) return;
+    const dx = e.clientX - r.sx;
+    const dy = e.clientY - r.sy;
+    // Dragging left (dx negative) widens the panel; its left edge follows the cursor.
+    let newW = Math.max(320, Math.min(window.innerWidth - 24, r.ow - dx));
+    let newLeft = r.left + dx;
+    // Keep the panel on-screen.
+    if (newLeft < 8) { newLeft = 8; newW = r.left + r.ow - 8; }
+    const newH = Math.max(240, Math.min(window.innerHeight - 24, r.oh + dy));
+    setSize({ w: newW, h: newH });
+    setPos((p) => ({ x: newLeft, y: p ? p.y : 80 }));
+  };
+  const endResize = () => { resizeRef.current = null; };
+
   return createPortal(
     <div
       data-visual-ui
       data-cards-panel-root
       dir="rtl"
       className="fixed z-[10005] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
-      style={{ top: pos ? pos.y : 80, left: pos ? pos.x : 16, width: 'min(440px, 94vw)', maxHeight: '82vh' }}
+      style={{ top: pos ? pos.y : 80, left: pos ? pos.x : 16, width: size.w, height: size.h }}
     >
       <div
         onPointerDown={startDrag}
         onPointerMove={onDrag}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
-        className="flex items-center justify-between gap-2 px-4 py-3 bg-teal-600 text-white cursor-move select-none touch-none"
+        className="flex items-center justify-between gap-2 px-4 py-3 bg-teal-600 text-white cursor-move select-none touch-none shrink-0"
       >
         <div className="flex items-center gap-2 min-w-0">
           <Move className="w-4 h-4 shrink-0" />
@@ -1638,11 +1674,27 @@ function CardsBuilderPanel({ onClose }: { onClose: () => void }) {
           <X className="w-4 h-4" />
         </button>
       </div>
-      <div className="p-4 overflow-y-auto">
+      <div className="p-4 overflow-y-auto flex-1 min-h-0">
         <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
           هر کارتی که اینجا اضافه یا ویرایش کنید، بلافاصله و به‌صورت زنده روی همین صفحه نمایش داده می‌شود.
+          <br />برای تغییر اندازه، گوشهٔ پایین-چپ را بکشید؛ برای جابجایی، نوار بالا را بکشید.
         </p>
         <CardsManager page={location.pathname} />
+      </div>
+
+      {/* Resize grip (bottom-left, clear of the RTL scrollbar) */}
+      <div
+        onPointerDown={startResize}
+        onPointerMove={onResize}
+        onPointerUp={endResize}
+        onPointerCancel={endResize}
+        title="تغییر اندازه"
+        className="absolute bottom-0 left-0 w-6 h-6 cursor-nesw-resize touch-none flex items-end justify-start p-1 text-gray-400 hover:text-teal-600"
+        style={{ zIndex: 2 }}
+      >
+        <svg viewBox="0 0 10 10" className="w-3.5 h-3.5 rotate-90" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+          <path d="M9 1 L1 9 M9 5 L5 9" />
+        </svg>
       </div>
     </div>,
     document.body
