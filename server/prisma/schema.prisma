@@ -1,0 +1,136 @@
+// Prisma schema for Mehr Safar booking API.
+// Default datasource is SQLite (zero-config). To use PostgreSQL,
+// change provider to "postgresql" and set DATABASE_URL accordingly.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+
+  @@map("admin_users")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  fullName     String
+  phone        String    @unique
+  email        String    @unique
+  passwordHash String    @default("")
+  createdAt    DateTime  @default(now())
+
+  bookings Booking[]
+  reviews  Review[]
+
+  @@map("users")
+}
+
+model Hotel {
+  id           Int      @id @default(autoincrement())
+  name         String
+  province     String?
+  city         String
+  address      String
+  stars        Int
+  type         String
+  review       String
+  reviewScore  Float
+  pricePerNight Int
+  images       String   // JSON-encoded string[]
+  description  String
+  amenities    String   // JSON-encoded string[]
+  phone        String
+  email        String
+  latitude     Float
+  longitude    Float
+  isFeatured   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  rooms    Room[]
+  bookings Booking[]
+  reviews  Review[]
+
+  @@index([city])
+  @@index([stars])
+  @@map("hotels")
+}
+
+model Room {
+  id       Int    @id @default(autoincrement())
+  hotelId  Int
+  name     String
+  capacity Int
+  price    Int
+  count    Int
+  features String // JSON-encoded string[]
+
+  hotel    Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([hotelId])
+  @@map("rooms")
+}
+
+model Booking {
+  id         Int      @id @default(autoincrement())
+  code       String   @unique // public tracking code
+  hotelId    Int
+  roomId     Int
+  userId     Int?
+  hotelName  String
+  roomName   String
+  guestName  String
+  guestPhone String
+  guestEmail String
+  checkIn    String   // ISO date (YYYY-MM-DD, Gregorian)
+  checkOut   String
+  guests     Int
+  totalPrice Int
+  status     String   @default("pending") // pending | confirmed | cancelled
+  createdAt  DateTime @default(now())
+
+  hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  room  Room  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([hotelId])
+  @@index([userId])
+  @@index([status])
+  @@map("bookings")
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  hotelId   Int
+  userId    Int?
+  userName  String
+  rating    Int
+  comment   String
+  date      String
+  createdAt DateTime @default(now())
+
+  hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([hotelId])
+  @@map("reviews")
+}
+
+model SiteConfig {
+  id        Int      @id @default(1)
+  data      String   @default("{}") // JSON blob: theme, cards, site edits, published config
+  updatedAt DateTime @updatedAt
+
+  @@map("site_config")
+}
