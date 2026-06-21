@@ -78,3 +78,23 @@ export interface SiteUser {
   password: string;
   createdAt: string;
 }
+
+// ── Custom cards (card builder) ──
+export type SiteCardType = 'hotel' | 'city' | 'banner';
+
+export interface SiteCard {
+  id: string;
+  type: SiteCardType;
+  title: string;
+  subtitle?: string;
+  image: string; // image URL
+  link: string; // internal path ("/...") or external URL ("https://...")
+  badge?: string; // optional small label
+}
+
+export interface CardGroup {
+  id: string;
+  title: string; // optional section heading
+  layout: 'vertical' | 'horizontal'; // زیر هم | رو به روی هم
+  cards: SiteCard[];
+}

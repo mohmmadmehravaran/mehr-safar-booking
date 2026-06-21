@@ -75,6 +75,65 @@ export function subscribeMagnet(cb: () => void): () => void {
   return () => magnetListeners.delete(cb);
 }
 
+/* ─── Selection highlight color (editor chrome) ───────────────────────────── */
+const SELECTION_COLOR_KEY = 'mehr_selection_color';
+export const DEFAULT_SELECTION_COLOR = '#10b981';
+
+function readSelectionColor(): string {
+  try {
+    return localStorage.getItem(SELECTION_COLOR_KEY) || DEFAULT_SELECTION_COLOR;
+  } catch {
+    return DEFAULT_SELECTION_COLOR;
+  }
+}
+
+let selectionColor = readSelectionColor();
+const selectionColorListeners = new Set<() => void>();
+
+export function getSelectionColor(): string {
+  return selectionColor;
+}
+
+export function setSelectionColor(v: string) {
+  selectionColor = v || DEFAULT_SELECTION_COLOR;
+  try {
+    localStorage.setItem(SELECTION_COLOR_KEY, selectionColor);
+  } catch {
+    /* ignore */
+  }
+  for (const cb of selectionColorListeners) cb();
+}
+
+export function subscribeSelectionColor(cb: () => void): () => void {
+  selectionColorListeners.add(cb);
+  return () => selectionColorListeners.delete(cb);
+}
+
+/** Convert any hex color (#rgb or #rrggbb) to an rgba() string with the given alpha. */
+export function hexToRgba(hex: string, alpha: number): string {
+  const clean = (hex || '').replace('#', '');
+  const full = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  if ([r, g, b].some(Number.isNaN)) return `rgba(16,185,129,${alpha})`;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/** Darken a hex color by a 0..1 factor (used for handle gradients). */
+export function shadeColor(hex: string, factor: number): string {
+  const clean = (hex || '').replace('#', '');
+  const full = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean;
+  let r = parseInt(full.slice(0, 2), 16);
+  let g = parseInt(full.slice(2, 4), 16);
+  let b = parseInt(full.slice(4, 6), 16);
+  if ([r, g, b].some(Number.isNaN)) return hex;
+  r = Math.max(0, Math.round(r * (1 - factor)));
+  g = Math.max(0, Math.round(g * (1 - factor)));
+  b = Math.max(0, Math.round(b * (1 - factor)));
+  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
 /* ─── Snap math ────────────────────────────────────────────────────────── */
 
 export interface Rect {
