@@ -45,7 +45,7 @@ export const hotelQuerySchema = z.object({
     .transform((v) => (v === undefined ? undefined : v === 'true')),
   sort: z.enum(['price_asc', 'price_desc', 'score_desc', 'newest']).optional(),
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(50),
+  limit: z.coerce.number().int().positive().max(500).default(50),
 });
 
 export type HotelBody = z.infer<typeof hotelBodySchema>;
