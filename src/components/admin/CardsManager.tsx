@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { BIG_CITIES } from '../../data/iranCities';
 import { SiteCard, SiteCardType } from '../../types';
 import { fileToCompressedDataURL } from '../../utils/image';
+import { useAllPages } from './PickerModals';
 
 const TYPE_OPTIONS: { value: SiteCardType; label: string; icon: React.ReactNode }[] = [
   { value: 'hotel', label: 'هتل', icon: <Hotel className="w-4 h-4" /> },
@@ -12,11 +13,17 @@ const TYPE_OPTIONS: { value: SiteCardType; label: string; icon: React.ReactNode 
   { value: 'banner', label: 'بنر', icon: <ImageIcon className="w-4 h-4" /> },
 ];
 
-const LINK_SUGGESTIONS = ['/', '/support', '/track', '/account'];
+const LINK_SUGGESTIONS = ['/', '/support', '/track', '/account']; // پیش‌فرض‌های قدیمی (دیگر مستقیم استفاده نمی‌شوند)
+void LINK_SUGGESTIONS;
 
-export default function CardsManager() {
+export default function CardsManager({ page }: { page?: string } = {}) {
   const { groups, addGroup, updateGroup, removeGroup, moveGroup, addCard, updateCard, removeCard, moveCard } = useCards();
   const { hotels } = useApp();
+
+  // When a page is provided the builder is scoped to that page (used inside the
+  // visual page editor). Without a page it manages the home "/" sections (admin panel).
+  const scope = page ?? '/';
+  const visibleGroups = groups.filter((g) => (g.page ?? '/') === scope);
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -33,20 +40,20 @@ export default function CardsManager() {
         </div>
         <button
           type="button"
-          onClick={addGroup}
+          onClick={() => addGroup(scope)}
           className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition-colors"
         >
           <Plus className="w-4 h-4" /> بخش جدید
         </button>
       </div>
 
-      {groups.length === 0 && (
+      {visibleGroups.length === 0 && (
         <div className="text-center py-12 text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded-2xl">
           هنوز بخشی نساخته‌اید. روی «بخش جدید» بزنید تا شروع کنید.
         </div>
       )}
 
-      {groups.map((group, gi) => (
+      {visibleGroups.map((group, gi) => (
         <div key={group.id} className="border border-gray-200 rounded-2xl p-4 bg-white shadow-sm">
           {/* Group header */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
@@ -83,7 +90,7 @@ export default function CardsManager() {
                 className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-30">
                 <ArrowUp className="w-4 h-4" />
               </button>
-              <button type="button" onClick={() => moveGroup(group.id, 1)} disabled={gi === groups.length - 1}
+              <button type="button" onClick={() => moveGroup(group.id, 1)} disabled={gi === visibleGroups.length - 1}
                 className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-30">
                 <ArrowDown className="w-4 h-4" />
               </button>
@@ -92,6 +99,45 @@ export default function CardsManager() {
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
+          </div>
+
+          {/* Size controls — تنظیم اندازه کارت‌ها (ریسپانسیو محفوظ می‌ماند) */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 p-3 bg-gray-50 border border-gray-200 rounded-xl">
+            {/* ارتفاع کارت */}
+            <label className="flex-1 flex items-center gap-3 text-xs font-semibold text-gray-600">
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <Rows3 className="w-4 h-4 text-emerald-600" /> ارتفاع کارت
+              </span>
+              <input
+                type="range"
+                min={120}
+                max={420}
+                step={4}
+                value={group.cardHeight ?? 208}
+                onChange={(e) => updateGroup(group.id, { cardHeight: Number(e.target.value) })}
+                className="flex-1 accent-emerald-600"
+              />
+              <span className="w-12 text-center font-mono text-gray-500">{group.cardHeight ?? 208}px</span>
+            </label>
+
+            {/* حداقل عرض کارت — فقط در چیدمان رو به روی هم */}
+            {group.layout === 'horizontal' && (
+              <label className="flex-1 flex items-center gap-3 text-xs font-semibold text-gray-600">
+                <span className="flex items-center gap-1 whitespace-nowrap">
+                  <Columns3 className="w-4 h-4 text-emerald-600" /> عرض کارت
+                </span>
+                <input
+                  type="range"
+                  min={160}
+                  max={520}
+                  step={10}
+                  value={group.minCardWidth ?? 280}
+                  onChange={(e) => updateGroup(group.id, { minCardWidth: Number(e.target.value) })}
+                  className="flex-1 accent-emerald-600"
+                />
+                <span className="w-12 text-center font-mono text-gray-500">{group.minCardWidth ?? 280}px</span>
+              </label>
+            )}
           </div>
 
           {/* Cards */}
@@ -103,6 +149,7 @@ export default function CardsManager() {
                 index={ci}
                 total={group.cards.length}
                 hotels={hotels}
+                layout={group.layout}
                 onChange={(partial) => updateCard(group.id, card.id, partial)}
                 onRemove={() => removeCard(group.id, card.id)}
                 onMove={(dir) => moveCard(group.id, card.id, dir)}
@@ -128,6 +175,7 @@ function CardEditor({
   index,
   total,
   hotels,
+  layout,
   onChange,
   onRemove,
   onMove,
@@ -136,12 +184,15 @@ function CardEditor({
   index: number;
   total: number;
   hotels: { id: number; name: string; city: string; images: string[] }[];
+  layout: 'vertical' | 'horizontal';
   onChange: (partial: Partial<SiteCard>) => void;
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  // همه‌ی صفحات قابل لینک: صفحات داخلی + صفحات سفارشی ساخته‌شده در ویرایش بصری
+  const allPages = useAllPages();
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -192,6 +243,29 @@ function CardEditor({
           </button>
         </div>
       </div>
+
+      {/* طول کارت — تعداد ستون‌هایی که کارت در شبکه اشغال می‌کند (فقط چیدمان رو به روی هم) */}
+      {layout === 'horizontal' && (
+        <div className="flex items-center gap-2 mb-3 text-xs font-semibold text-gray-600">
+          <span className="flex items-center gap-1 whitespace-nowrap">
+            <Columns3 className="w-4 h-4 text-emerald-600" /> طول کارت
+          </span>
+          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
+            {[1, 2, 3].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => onChange({ colSpan: n })}
+                className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
+                  (card.colSpan ?? 1) === n ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                {n === 1 ? 'عادی' : n === 2 ? '۲ برابر' : '۳ برابر'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Quick fill helpers */}
       {card.type === 'hotel' && (
@@ -255,23 +329,36 @@ function CardEditor({
             <Upload className="w-4 h-4" /> {uploading ? '...' : 'آپلود'}
           </button>
         </div>
-        <div className="relative">
-          <input
-            value={card.link}
-            onChange={(e) => onChange({ link: e.target.value })}
-            placeholder="لینک (مثلاً /hotel/3 یا https://...)"
-            list={`links-${card.id}`}
-            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-300"
-          />
-          <ExternalLink className="w-4 h-4 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2" />
-          <datalist id={`links-${card.id}`}>
-            {LINK_SUGGESTIONS.map((l) => (
-              <option key={l} value={l} />
+        <div className="relative sm:col-span-2 space-y-2">
+          {/* انتخاب سریع صفحه مقصد — شامل صفحاتی که در ویرایش بصری ساخته‌ای */}
+          <select
+            value={allPages.some((p) => p.path === card.link) ? card.link : ''}
+            onChange={(e) => { if (e.target.value) onChange({ link: e.target.value }); }}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-emerald-300"
+          >
+            <option value="">— انتخاب صفحه مقصد —</option>
+            {allPages.map((p) => (
+              <option key={p.path} value={p.path}>{p.label}</option>
             ))}
-            {hotels.map((h) => (
-              <option key={h.id} value={`/hotel/${h.id}`}>{h.name}</option>
-            ))}
-          </datalist>
+          </select>
+          <div className="relative">
+            <input
+              value={card.link}
+              onChange={(e) => onChange({ link: e.target.value })}
+              placeholder="لینک (مثلاً /hotel/3 یا https://...)"
+              list={`links-${card.id}`}
+              className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-300"
+            />
+            <ExternalLink className="w-4 h-4 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2" />
+            <datalist id={`links-${card.id}`}>
+              {allPages.map((p) => (
+                <option key={p.path} value={p.path}>{p.label}</option>
+              ))}
+              {hotels.map((h) => (
+                <option key={h.id} value={`/hotel/${h.id}`}>{h.name}</option>
+              ))}
+            </datalist>
+          </div>
         </div>
       </div>
 

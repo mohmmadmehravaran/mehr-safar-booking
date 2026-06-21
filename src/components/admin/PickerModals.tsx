@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { X, Search } from 'lucide-react';
 import { ICON_LIBRARY } from '../../utils/iconLibrary';
 import { SHAPE_LIBRARY, shapeCss } from '../../utils/shapeLibrary';
 import type { ShapeKind } from '../../context/SiteEditsContext';
 import { useSiteEdits } from '../../context/SiteEditsContext';
+import { setCardsPanelOpen } from './cardsPanelStore';
 
 /* Built-in site pages, shown alongside user-created pages in every link picker. */
 export const BUILT_IN_PAGES = [
@@ -260,6 +262,18 @@ export function HeaderLinksManager({ onClose }: { onClose: () => void }) {
 export function PageManager({ onClose }: { onClose: () => void }) {
   const { customPages, addCustomPage, updateCustomPage, removeCustomPage } = useSiteEdits();
   const [name, setName] = useState('');
+  const navigate = useNavigate();
+
+  // Create a page, jump to it, and open the live "کارت‌ها" builder so the user
+  // can immediately add cards on the brand-new page — exactly as requested.
+  const createAndOpen = (label: string) => {
+    const path = addCustomPage(label);
+    setName('');
+    navigate(path);
+    onClose();
+    // Open the in-page cards builder after navigation settles.
+    setTimeout(() => setCardsPanelOpen(true), 60);
+  };
 
   return createPortal(
     <div
@@ -285,13 +299,13 @@ export function PageManager({ onClose }: { onClose: () => void }) {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) { addCustomPage(name); setName(''); } }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) createAndOpen(name); }}
               placeholder="مثلاً: درباره ما"
               className="flex-1 p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             <button
               disabled={!name.trim()}
-              onClick={() => { if (name.trim()) { addCustomPage(name); setName(''); } }}
+              onClick={() => { if (name.trim()) createAndOpen(name); }}
               className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-emerald-700 transition-colors whitespace-nowrap"
             >
               + ساختن

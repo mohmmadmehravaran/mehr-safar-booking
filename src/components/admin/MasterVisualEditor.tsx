@@ -27,6 +27,9 @@ import {
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
 } from 'lucide-react';
 import LayersPanel from './LayersPanel';
+import CardsManager from './CardsManager';
+import { useCardsPanelOpen, setCardsPanelOpen } from './cardsPanelStore';
+import { useCards } from '../../context/CardsContext';
 import { FONT_LIBRARY, ensureFontLoaded, preloadAllFonts } from '../../utils/fonts';
 
 /* useMagnet — subscribe to the magnet-enabled toggle */
@@ -1301,6 +1304,12 @@ function MasterToolbar() {
   const magnet = useMagnet();
   const selColor = useSelectionColor();
   const layersOpen = useLayersOpen();
+  const cardsOpen = useCardsPanelOpen();
+  const { groups: cardGroups } = useCards();
+  // How many cards already live on the page we're editing (for the toolbar badge).
+  const pageCardCount = cardGroups
+    .filter((g) => (g.page ?? '/') === location.pathname)
+    .reduce((n, g) => n + g.cards.length, 0);
 
   // Draggable toolbar position (null = default centered top position)
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -1434,7 +1443,23 @@ function MasterToolbar() {
           onClick={() => addCustomWidget('container', undefined, location.pathname)}
           className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 font-bold rounded-full hover:bg-blue-100 transition-colors"
         >
-          <span>+ کادر / کارت</span>
+          <span>+ کادر</span>
+        </button>
+
+        {/* Live card builder — same settings as the admin "کارها" panel, scoped to THIS page */}
+        <button
+          onClick={() => setCardsPanelOpen(!cardsOpen)}
+          title="ساخت و مدیریت کارت‌ها برای همین صفحه — دقیقاً مثل تنظیمات پنل مدیریت و کاملاً زنده"
+          className={`flex items-center gap-1.5 px-3 py-1.5 font-bold rounded-full transition-colors ${
+            cardsOpen ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-sm' : 'bg-teal-50 text-teal-700 hover:bg-teal-100'
+          }`}
+        >
+          <span>🃏 کارت‌ها</span>
+          {pageCardCount > 0 && (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${cardsOpen ? 'bg-white/25' : 'bg-teal-200/70 text-teal-800'}`}>
+              {pageCardCount}
+            </span>
+          )}
         </button>
 
         <button
@@ -1556,6 +1581,74 @@ function MasterToolbar() {
 /* ─────────────────────────────────────────────────────────
    MAIN Controller Component
 ───────────────────────────────────────────────────────── */
+/* Cards Builder Panel — embeds the SAME card settings as the admin "کارها"
+   panel, but scoped to the page currently being edited, with a live preview. */
+function CardsBuilderPanel({ onClose }: { onClose: () => void }) {
+  const location = useLocation();
+  const allPages = useAllPages();
+  const pageLabel =
+    allPages.find((p) => p.path === location.pathname)?.label?.replace(/^📄\s*/, '') ||
+    (location.pathname === '/' ? 'صفحه اصلی' : location.pathname);
+
+  // Draggable window position (defaults to the top-left of the screen).
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
+
+  const startDrag = (e: React.PointerEvent) => {
+    const win = (e.currentTarget as HTMLElement).closest('[data-cards-panel-root]') as HTMLElement | null;
+    if (!win) return;
+    const rect = win.getBoundingClientRect();
+    dragRef.current = { sx: e.clientX, sy: e.clientY, ox: rect.left, oy: rect.top };
+    setPos({ x: rect.left, y: rect.top });
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+  const onDrag = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const nx = Math.max(8, Math.min(window.innerWidth - 60, d.ox + (e.clientX - d.sx)));
+    const ny = Math.max(8, Math.min(window.innerHeight - 60, d.oy + (e.clientY - d.sy)));
+    setPos({ x: nx, y: ny });
+  };
+  const endDrag = () => { dragRef.current = null; };
+
+  return createPortal(
+    <div
+      data-visual-ui
+      data-cards-panel-root
+      dir="rtl"
+      className="fixed z-[10005] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
+      style={{ top: pos ? pos.y : 80, left: pos ? pos.x : 16, width: 'min(440px, 94vw)', maxHeight: '82vh' }}
+    >
+      <div
+        onPointerDown={startDrag}
+        onPointerMove={onDrag}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        className="flex items-center justify-between gap-2 px-4 py-3 bg-teal-600 text-white cursor-move select-none touch-none"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Move className="w-4 h-4 shrink-0" />
+          <div className="min-w-0">
+            <div className="font-black text-sm leading-tight">🃏 کارت‌های این صفحه</div>
+            <div className="text-[11px] text-teal-100 truncate">{pageLabel}</div>
+          </div>
+        </div>
+        <button onClick={onClose} title="بستن" className="p-1.5 rounded-lg hover:bg-white/20 transition-colors shrink-0">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="p-4 overflow-y-auto">
+        <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
+          هر کارتی که اینجا اضافه یا ویرایش کنید، بلافاصله و به‌صورت زنده روی همین صفحه نمایش داده می‌شود.
+        </p>
+        <CardsManager page={location.pathname} />
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function MasterVisualEditor() {
   const { isVisualEditing } = useTheme();
   const {
@@ -1563,6 +1656,7 @@ export default function MasterVisualEditor() {
     customWidgets, updateCustomWidget, removeCustomWidget, duplicateWidget, moveWidgetLayer,
   } = useSiteEdits();
   const layersOpen = useLayersOpen();
+  const cardsPanelOpen = useCardsPanelOpen();
 
   // Highlight / Cursor styles
   useEffect(() => {
@@ -1668,6 +1762,7 @@ export default function MasterVisualEditor() {
       <MasterToolbar />
       <SnapOverlay />
       {layersOpen && <LayersPanel onClose={() => setLayersOpen(false)} />}
+      {cardsPanelOpen && <CardsBuilderPanel onClose={() => setCardsPanelOpen(false)} />}
       {selectedPath && <SelectionBox path={selectedPath} />}
       {selectedPath && <InspectorWindow path={selectedPath} />}
     </>,

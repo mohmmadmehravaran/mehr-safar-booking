@@ -1,6 +1,45 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { Hotel, Booking, UserReview, ReviewLevel, AccommodationType, SiteUser } from '../types';
 import { api, tokenStore } from '../api';
+import { sampleHotels, sampleReviews, sampleBookings, adminUser } from '../data/hotels';
+
+// در صورت نبود بک‌اند (مثلاً دیپلوی استاتیک روی GitHub Pages) اپ به این داده‌های نمونه و ورود محلی برمی‌گردد.
+const DEMO_ADMIN_TOKEN = 'demo-admin-token';
+const DEMO_USER_TOKEN_PREFIX = 'demo-user-token:';
+const DEMO_USERS_KEY = 'mehrsafar-demo-users';
+
+// ── کمک‌تابع‌های حالت دمو برای کاربران (ذخیره در localStorage) ──
+function loadDemoUsers(): SiteUser[] {
+  try { return JSON.parse(localStorage.getItem(DEMO_USERS_KEY) || '[]') as SiteUser[]; } catch { return []; }
+}
+function saveDemoUsers(list: SiteUser[]) {
+  try { localStorage.setItem(DEMO_USERS_KEY, JSON.stringify(list)); } catch { /* ignore */ }
+}
+function demoLoginByPhone(phone: string): SiteUser {
+  const list = loadDemoUsers();
+  let user = list.find((u) => u.phone === phone);
+  if (!user) {
+    user = {
+      id: Date.now(),
+      fullName: 'کاربر مهمان',
+      phone,
+      email: '',
+      password: '',
+      createdAt: new Date().toISOString(),
+    };
+    list.push(user);
+    saveDemoUsers(list);
+  }
+  return user;
+}
+function demoUpdateUser(phone: string, data: { fullName: string; email: string; phone: string }): SiteUser | null {
+  const list = loadDemoUsers();
+  const i = list.findIndex((u) => u.phone === phone);
+  if (i < 0) return null;
+  list[i] = { ...list[i], ...data };
+  saveDemoUsers(list);
+  return list[i];
+}
 
 interface Filters {
   stars: number[];
@@ -74,7 +113,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setHotels(h);
         setReviews(r);
       } catch (e) {
-        console.error('Failed to load initial data', e);
+        // بک‌اند در دسترس نیست → حالت دمو با داده‌های داخلی
+        console.warn('Backend unavailable, falling back to demo data', e);
+        if (alive) {
+          setHotels(sampleHotels);
+          setReviews(sampleReviews);
+        }
       } finally {
         if (alive) setLoading(false);
       }
@@ -86,6 +130,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const t = tokenStore.getUser();
     if (!t) return;
+    // حالت دمو: بازیابی کاربر از localStorage
+    if (t.startsWith(DEMO_USER_TOKEN_PREFIX)) {
+      const phone = t.slice(DEMO_USER_TOKEN_PREFIX.length);
+      const u = loadDemoUsers().find((x) => x.phone === phone) || null;
+      if (u) setCurrentUser(u); else { tokenStore.setUser(''); setCurrentUser(null); }
+      return;
+    }
     api.me(t).then(setCurrentUser).catch(() => { tokenStore.setUser(''); setCurrentUser(null); });
   }, []);
 
@@ -93,11 +144,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const refreshBookings = useCallback(async () => {
     const adminTok = tokenStore.getAdmin();
     const userTok = tokenStore.getUser();
+    if (adminTok === DEMO_ADMIN_TOKEN) { setBookings(sampleBookings); return; }
     try {
       if (adminTok) setBookings(await api.allBookings(adminTok));
       else if (userTok) setBookings(await api.myBookings(userTok));
       else setBookings([]);
-    } catch (e) { console.error('Failed to load bookings', e); }
+    } catch (e) {
+      // حالت دمو: نمایش رزروهای نمونه برای مدیر
+      if (adminTok) setBookings(sampleBookings); else setBookings([]);
+      console.warn('Bookings API unavailable, using demo data', e);
+    }
   }, []);
 
   const refreshUsers = useCallback(async () => {
@@ -193,6 +249,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try { localStorage.setItem('mehrsafar-admin-name', res.admin?.name || 'مدیر سیستم'); } catch { /* ignore */ }
       return true;
     } catch {
+      // بک‌اند در دسترس نیست → ورود محلی (حالت دمو) با مقایسه‌ی مقادیر داخلی
+      if (username === adminUser.username && password === adminUser.password) {
+        tokenStore.setAdmin(DEMO_ADMIN_TOKEN);
+        setIsAdmin(true);
+        setAdminName(adminUser.name);
+        try { localStorage.setItem('mehrsafar-admin-name', adminUser.name); } catch { /* ignore */ }
+        return true;
+      }
       return false;
     }
   }, []);
@@ -234,15 +298,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser(res.user);
       return { success: true, message: 'ورود با موفقیت انجام شد.' };
     } catch (e) {
-      return { success: false, message: e instanceof Error ? e.message : 'ورود ناموفق بود.' };
+      // بک‌اند در دسترس نیست → ورود/ثبت‌نام محلی (حالت دمو)
+      const cleaned = (phone || '').trim();
+      const digits = cleaned.replace(/\D/g, '');
+      if (digits.length >= 10) {
+        const user = demoLoginByPhone(cleaned);
+        tokenStore.setUser(DEMO_USER_TOKEN_PREFIX + cleaned);
+        setCurrentUser(user);
+        return { success: true, message: 'ورود با موفقیت انجام شد.' };
+      }
+      return { success: false, message: 'شماره موبایل معتبر وارد کنید.' };
     }
   }, []);
 
   const updateProfile = useCallback(async (data: { fullName: string; email: string; phone: string }): Promise<Result> => {
     const tok = tokenStore.getUser();
     if (!tok) return { success: false, message: 'ابتدا وارد شوید.' };
+    // حالت دمو: به‌روزرسانی محلی پروفایل
+    if (tok.startsWith(DEMO_USER_TOKEN_PREFIX)) {
+      const phone = tok.slice(DEMO_USER_TOKEN_PREFIX.length);
+      const updated = demoUpdateUser(phone, data);
+      if (updated) {
+        // اگر شماره عوض شد، توکن را نیز به‌روزرسانی کن
+        if (data.phone && data.phone !== phone) tokenStore.setUser(DEMO_USER_TOKEN_PREFIX + data.phone);
+        setCurrentUser(updated);
+        return { success: true, message: 'پروفایل به‌روزرسانی شد.' };
+      }
+      return { success: false, message: 'به‌روزرسانی ناموفق بود.' };
+    }
     try {
-      await api.updateProfile(data, tok);
       const fresh = await api.me(tok);
       setCurrentUser(fresh);
       return { success: true, message: 'پروفایل به‌روزرسانی شد.' };
