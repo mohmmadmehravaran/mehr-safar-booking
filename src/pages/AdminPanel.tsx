@@ -2,7 +2,7 @@ import { useState, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Hotel, CalendarDays, MessageSquare, LogIn, Plus, Edit2, Trash2, Check, X, Eye, Star,
-  DollarSign, AlertCircle, Paintbrush, Users, Phone, Mail, Search
+  DollarSign, AlertCircle, Paintbrush, Users, Phone, Mail, Search, LayoutGrid
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
@@ -11,9 +11,11 @@ import { formatJalali } from '../utils/date';
 import { PROVINCE_NAMES, getCitiesForProvince, findProvinceOfCity } from '../data/iranCities';
 import { motion, AnimatePresence } from 'framer-motion';
 import AppearancePanel from '../components/admin/AppearancePanel';
+import CardsManager from '../components/admin/CardsManager';
 import { useDocumentTitle } from '../utils/useDocumentTitle';
+import { fileToCompressedDataURL } from '../utils/image';
 
-type Tab = 'dashboard' | 'hotels' | 'bookings' | 'users' | 'reviews' | 'appearance';
+type Tab = 'dashboard' | 'hotels' | 'bookings' | 'users' | 'reviews' | 'cards' | 'appearance';
 
 export default function AdminPanel() {
   const navigate = useNavigate();
@@ -37,9 +39,9 @@ export default function AdminPanel() {
     rooms: [], latitude: 0, longitude: 0, isFeatured: false,
   });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginAdmin(loginForm.username, loginForm.password)) {
+    if (await loginAdmin(loginForm.username, loginForm.password)) {
       setLoginError('');
     } else {
       setLoginError('نام کاربری یا رمز عبور اشتباه است');
@@ -75,18 +77,63 @@ export default function AdminPanel() {
 
   const openEditHotel = (hotel: HotelType) => {
     setEditingHotel(hotel);
+    setNewImageUrl('');
     setHotelForm({ ...hotel, province: hotel.province || findProvinceOfCity(hotel.city) });
     setShowHotelForm(true);
   };
 
   const openNewHotel = () => {
     setEditingHotel(null);
+    setNewImageUrl('');
     setHotelForm({
       name: '', province: '', city: '', address: '', stars: 3, type: 'هتل', review: 'خوب', reviewScore: 7,
       pricePerNight: 0, description: '', phone: '', email: '', amenities: [], images: [''],
       rooms: [], latitude: 0, longitude: 0, isFeatured: false,
     });
     setShowHotelForm(true);
+  };
+
+  // ── Hotel images: support selecting MULTIPLE photos per hotel ──
+  const [newImageUrl, setNewImageUrl] = useState('');
+
+  const currentImages = (hotelForm.images || []).filter(Boolean);
+
+  const addImagesFromFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    try {
+      const dataUrls = await Promise.all(Array.from(files).map((f) => fileToCompressedDataURL(f)));
+      setHotelForm((prev) => ({
+        ...prev,
+        images: [...(prev.images || []).filter(Boolean), ...dataUrls],
+      }));
+    } catch {
+      alert('بارگذاری برخی تصاویر ناموفق بود. لطفاً دوباره تلاش کنید.');
+    }
+  };
+
+  const addImageUrl = (url: string) => {
+    const u = url.trim();
+    if (!u) return;
+    setHotelForm((prev) => ({ ...prev, images: [...(prev.images || []).filter(Boolean), u] }));
+    setNewImageUrl('');
+  };
+
+  const removeImageAt = (idx: number) => {
+    setHotelForm((prev) => {
+      const imgs = (prev.images || []).filter(Boolean);
+      imgs.splice(idx, 1);
+      return { ...prev, images: imgs.length ? imgs : [''] };
+    });
+  };
+
+  const makeCoverImage = (idx: number) => {
+    setHotelForm((prev) => {
+      const imgs = [...(prev.images || []).filter(Boolean)];
+      if (idx <= 0 || idx >= imgs.length) return prev;
+      const [picked] = imgs.splice(idx, 1);
+      imgs.unshift(picked);
+      return { ...prev, images: imgs };
+    });
   };
 
   // Group hotels by province (and sort by city within each) for the management list
@@ -163,6 +210,7 @@ export default function AdminPanel() {
     { id: 'bookings', label: 'رزروها', icon: <CalendarDays className="w-5 h-5" /> },
     { id: 'users', label: 'کاربران', icon: <Users className="w-5 h-5" /> },
     { id: 'reviews', label: 'نظرات', icon: <MessageSquare className="w-5 h-5" /> },
+    { id: 'cards', label: 'کارت‌ها', icon: <LayoutGrid className="w-5 h-5" /> },
     { id: 'appearance', label: 'ظاهر سایت', icon: <Paintbrush className="w-5 h-5" /> },
   ];
 
@@ -458,10 +506,10 @@ export default function AdminPanel() {
                   setUserAlert(null);
                   setEditingUser(u);
                 };
-                const saveUser = (e: React.FormEvent) => {
+                const saveUser = async (e: React.FormEvent) => {
                   e.preventDefault();
                   if (!editingUser) return;
-                  const r = adminUpdateUser(editingUser.id, userForm);
+                  const r = await adminUpdateUser(editingUser.id, userForm);
                   setUserAlert({ ok: r.success, msg: r.message });
                   if (r.success) setEditingUser(null);
                 };
@@ -658,6 +706,12 @@ export default function AdminPanel() {
                 </motion.div>
               )}
 
+              {activeTab === 'cards' && (
+                <motion.div key="cards" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                  <CardsManager />
+                </motion.div>
+              )}
+
               {activeTab === 'appearance' && (
                 <motion.div key="appearance" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                   {/* Visual Editor Launch */}
@@ -769,8 +823,62 @@ export default function AdminPanel() {
                 </div>
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">تصویر (URL)</label>
-                <input type="text" value={hotelForm.images?.[0] || ''} onChange={(e) => setHotelForm((prev) => ({ ...prev, images: [e.target.value] }))} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <label className="text-xs text-gray-500 mb-1 block">تصاویر هتل (چند عکس)</label>
+
+                {/* Thumbnails of selected images */}
+                <div className="flex flex-wrap gap-3 mb-3">
+                  {currentImages.map((img, idx) => (
+                    <div key={idx} className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group">
+                      <img src={img} alt={`تصویر ${idx + 1}`} className="w-full h-full object-cover" />
+                      {idx === 0 && (
+                        <span className="absolute top-1 right-1 bg-emerald-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">اصلی</span>
+                      )}
+                      <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                        {idx !== 0 && (
+                          <button type="button" onClick={() => makeCoverImage(idx)} title="تنظیم به‌عنوان عکس اصلی" className="p-1.5 bg-white/90 rounded-full text-emerald-600 hover:bg-white">
+                            <Star className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button type="button" onClick={() => removeImageAt(idx)} title="حذف تصویر" className="p-1.5 bg-white/90 rounded-full text-red-600 hover:bg-white">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {currentImages.length === 0 && (
+                    <div className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 text-xs text-center px-1">بدون تصویر</div>
+                  )}
+                </div>
+
+                {/* Upload from device (multiple) */}
+                <label className="cursor-pointer flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                  <Plus className="w-4 h-4" />
+                  افزودن عکس از دستگاه
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => { addImagesFromFiles(e.target.files); e.currentTarget.value = ''; }}
+                  />
+                </label>
+
+                {/* Add by URL */}
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="text"
+                    value={newImageUrl}
+                    onChange={(e) => setNewImageUrl(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addImageUrl(newImageUrl); } }}
+                    placeholder="یا آدرس URL تصویر را وارد کنید"
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <button type="button" onClick={() => addImageUrl(newImageUrl)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm hover:bg-emerald-700 transition-colors whitespace-nowrap">
+                    افزودن
+                  </button>
+                </div>
+
+                <p className="text-[11px] text-gray-400 mt-1.5">می‌توانید چند عکس انتخاب کنید. اولین عکس به‌عنوان عکس اصلی (کاور) نمایش داده می‌شود.</p>
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="featured" checked={hotelForm.isFeatured || false} onChange={(e) => setHotelForm((prev) => ({ ...prev, isFeatured: e.target.checked }))} className="w-4 h-4 accent-emerald-600" />

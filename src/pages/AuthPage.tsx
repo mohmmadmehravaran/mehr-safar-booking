@@ -17,9 +17,9 @@ export default function AuthPage() {
 
   const close = () => navigate(-1);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const r = loginWithPhone(phone);
+    const r = await loginWithPhone(phone);
     setAlert({ ok: r.success, msg: r.message });
     if (r.success) setTimeout(() => navigate('/account'), 600);
   };

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Phone, Mail, Wifi, Car, UtensilsCrossed, Dumbbell, Waves, Coffee, ArrowRight, Star, Check, User } from 'lucide-react';
+import { MapPin, Phone, Mail, Wifi, Car, UtensilsCrossed, Dumbbell, Waves, Coffee, ArrowRight, Star, Check, User, X, ChevronLeft, ChevronRight, LayoutGrid } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import StarRating from '../components/StarRating';
@@ -52,6 +52,7 @@ export default function HotelDetail() {
   const [bookingForm, setBookingForm] = useState({ name: '', phone: '', email: '' });
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
     setCheckIn(filters.checkIn || '');
@@ -89,6 +90,58 @@ export default function HotelDetail() {
     setFilters((prev) => ({ ...prev, checkOut: date }));
   };
 
+  // ── Image lightbox (full-screen viewer with prev/next) ──
+  const openLightbox = (i: number) => setLightboxIndex(i);
+  const closeLightbox = () => setLightboxIndex(null);
+  const navLightbox = (dir: number) =>
+    setLightboxIndex((idx) => {
+      if (idx === null) return idx;
+      const len = hotel?.images?.length ? hotel.images.length : 1;
+      return (idx + dir + len) % len;
+    });
+
+  // ── Touch / swipe support for the lightbox (mobile) ──
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStartX.current = t.clientX;
+    touchStartY.current = t.clientY;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX.current;
+    const dy = t.clientY - touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+    const SWIPE_THRESHOLD = 50;
+    // Only treat as a horizontal swipe when horizontal movement clearly dominates
+    if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
+    const len = hotel?.images?.length ? hotel.images.length : 1;
+    if (len <= 1) return;
+    // RTL gallery: swiping left-to-right (dx > 0) shows the previous image,
+    // swiping right-to-left (dx < 0) shows the next image — mirrors the arrow buttons.
+    navLightbox(dx > 0 ? -1 : 1);
+  };
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const len = hotel?.images?.length ? hotel.images.length : 1;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxIndex(null);
+      else if (e.key === 'ArrowLeft') setLightboxIndex((i) => (i === null ? i : (i + 1) % len));
+      else if (e.key === 'ArrowRight') setLightboxIndex((i) => (i === null ? i : (i - 1 + len) % len));
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [lightboxIndex, hotel]);
+
   if (!hotel) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.bodyBg }}>
@@ -101,18 +154,20 @@ export default function HotelDetail() {
   }
 
   const hotelReviews = reviews.filter((r) => r.hotelId === hotel.id);
+  const galleryImages = hotel.images && hotel.images.length ? hotel.images : [''];
+  const gridThumbs = galleryImages.slice(1, 5);
   const nights = checkIn && checkOut
     ? Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
     : 0;
   const selectedRoomObj = selectedRoom ? hotel.rooms.find((r) => r.id === selectedRoom) : null;
   const totalPrice = selectedRoomObj ? selectedRoomObj.price * nights : 0;
 
-  const handleBooking = () => {
+  const handleBooking = async () => {
     if (!selectedRoom || !checkIn || !checkOut || !bookingForm.name || !bookingForm.phone) return;
     const room = hotel.rooms.find((r) => r.id === selectedRoom);
     if (!room) return;
 
-    addBooking({
+    const r = await addBooking({
       id: Date.now(),
       hotelId: hotel.id,
       hotelName: hotel.name,
@@ -129,6 +184,7 @@ export default function HotelDetail() {
       createdAt: new Date().toISOString().split('T')[0],
     });
 
+    if (!r.success) { alert(r.message); return; }
     setBookingSuccess(true);
     setTimeout(() => {
       setShowBookingModal(false);
@@ -140,44 +196,84 @@ export default function HotelDetail() {
 
   return (
     <div className="min-h-screen pb-12" style={{ backgroundColor: theme.colors.bodyBg }}>
-      {/* Image Header */}
-      <div className="relative h-80 md:h-[500px] overflow-hidden">
-        <img src={hotel.images[0]} alt={hotel.name} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-        
-        {/* Back button */}
+      {/* Back button */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         <button
           onClick={() => navigate('/')}
-          className="absolute top-6 right-6 flex items-center gap-2 px-4 py-2.5 glass-dark text-white rounded-full hover:bg-white/20 transition-all backdrop-blur-xl"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all hover:bg-black/5"
+          style={{ color: theme.colors.textSecondary }}
         >
           <ArrowRight className="w-4 h-4" />
           بازگشت
         </button>
+      </div>
 
-        {/* Info overlay */}
-        <div className="absolute bottom-0 right-0 left-0 p-6 md:p-10">
-          <div className="max-w-7xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-4"
-            >
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="px-4 py-1.5 glass-dark text-white rounded-full text-sm font-medium backdrop-blur-xl">
-                  {hotel.type}
-                </span>
-                <ReviewBadge review={hotel.review} score={hotel.reviewScore} />
-              </div>
-              <h1 className="text-3xl md:text-5xl font-bold text-white mb-3" style={{ fontFamily: `'${theme.fonts.heading}'` }}>
-                {hotel.name}
-              </h1>
-              <div className="flex items-center gap-2 text-white/90">
-                <MapPin className="w-5 h-5" />
-                <span>{hotel.city}، {hotel.address}</span>
-              </div>
-            </motion.div>
-          </div>
+      {/* Photo gallery collage */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3">
+        <div className="flex gap-2 h-[280px] md:h-[440px]">
+          {/* Large cover image (right in RTL) */}
+          <button
+            type="button"
+            onClick={() => openLightbox(0)}
+            className="relative group rounded-2xl md:rounded-3xl overflow-hidden flex-1"
+          >
+            <img src={galleryImages[0]} alt={hotel.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+          </button>
+
+          {/* 2x2 thumbnail grid (left in RTL) — only when there is more than one image */}
+          {galleryImages.length > 1 && (
+            <div className="hidden sm:grid grid-cols-2 grid-rows-2 gap-2 w-1/2">
+              {gridThumbs.map((img, i) => {
+                const realIndex = i + 1;
+                const isLast = i === gridThumbs.length - 1;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => openLightbox(realIndex)}
+                    className="relative group rounded-2xl overflow-hidden"
+                  >
+                    <img src={img} alt={`${hotel.name} ${realIndex + 1}`} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                    {isLast && (
+                      <span className="absolute bottom-2 right-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-black/70 text-white text-xs font-medium rounded-lg backdrop-blur-md pointer-events-none">
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                        {toPersianNumber(galleryImages.length)} تصویر در گالری
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* Hotel info header */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-3"
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className="px-4 py-1.5 rounded-full text-sm font-medium"
+              style={{ backgroundColor: theme.colors.primaryLight, color: theme.colors.primary }}
+            >
+              {hotel.type}
+            </span>
+            <ReviewBadge review={hotel.review} score={hotel.reviewScore} />
+          </div>
+          <h1 className="text-2xl md:text-4xl font-bold" style={{ color: theme.colors.textPrimary, fontFamily: `'${theme.fonts.heading}'` }}>
+            {hotel.name}
+          </h1>
+          <div className="flex items-center gap-2" style={{ color: theme.colors.textSecondary }}>
+            <MapPin className="w-5 h-5 flex-shrink-0" />
+            <span>{hotel.city}، {hotel.address}</span>
+          </div>
+        </motion.div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -394,6 +490,81 @@ export default function HotelDetail() {
           </div>
         </div>
       </div>
+
+      {/* Image Lightbox */}
+      {lightboxIndex !== null && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex flex-col"
+          onClick={closeLightbox}
+          role="dialog"
+          aria-modal="true"
+          aria-label="گالری تصاویر هتل"
+        >
+          {/* Top bar */}
+          <div className="flex items-center justify-between p-4 text-white" onClick={(e) => e.stopPropagation()}>
+            <span className="text-sm font-medium">
+              {toPersianNumber(lightboxIndex + 1)} / {toPersianNumber(galleryImages.length)}
+            </span>
+            <button
+              type="button"
+              onClick={closeLightbox}
+              aria-label="بستن"
+              className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Main image */}
+          <div
+            className="flex-1 flex items-center justify-center px-4 relative min-h-0 touch-pan-y select-none"
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            {galleryImages.length > 1 && (
+              <button
+                type="button"
+                onClick={() => navLightbox(1)}
+                aria-label="تصویر بعدی"
+                className="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+            <img src={galleryImages[lightboxIndex]} alt="" draggable={false} className="max-h-full max-w-full object-contain rounded-xl pointer-events-none" />
+            {galleryImages.length > 1 && (
+              <button
+                type="button"
+                onClick={() => navLightbox(-1)}
+                aria-label="تصویر قبلی"
+                className="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
+          </div>
+
+          {/* Thumbnail strip */}
+          {galleryImages.length > 1 && (
+            <div className="p-4 flex gap-2 overflow-x-auto justify-start md:justify-center" onClick={(e) => e.stopPropagation()}>
+              {galleryImages.map((img, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setLightboxIndex(i)}
+                  aria-label={`تصویر ${i + 1}`}
+                  className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                    i === lightboxIndex ? 'border-white' : 'border-transparent opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Booking Modal */}
       {showBookingModal && (

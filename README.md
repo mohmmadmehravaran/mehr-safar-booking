@@ -68,3 +68,52 @@ npm run build      # خروجی تک‌فایلی در dist/index.html
 - `Ctrl/Cmd + ]` و `Ctrl/Cmd + [`: جلو/عقب بردن لایه
 - `L`: قفل/بازکردن قفل لایه
 - `Esc`: لغو انتخاب
+
+
+---
+
+## 🛠️ بک‌اند (API)
+
+این پروژه اکنون یک **بک‌اند کامل و حرفه‌ای** دارد که در پوشه‌ی [`server/`](./server) قرار گرفته است.
+
+- **تکنولوژی:** Node.js + Express + TypeScript + Prisma (پیش‌فرض SQLite، قابل تغییر به PostgreSQL)
+- **احراز هویت:** JWT برای کاربر و مدیر، رمزها با bcrypt هش می‌شوند
+- **اعتبارسنجی:** همه‌ی ورودی‌ها با Zod
+- **امنیت:** helmet، CORS، محدودسازی نرخ درخواست (rate limiting)
+- **داده‌ها:** همان ۱۲ هتل، ۲۵ اتاق، رزروها و نظرات به‌صورت خودکار seed می‌شوند
+- **موتور رزرو:** بررسی ظرفیت و تداخل تاریخ، کد پیگیری عمومی برای هر رزرو
+- **آماده‌ی استقرار:** Dockerfile، `render.yaml`، و GitHub Actions CI
+
+### اجرای سریع بک‌اند
+
+```bash
+cd server
+cp .env.example .env      # سپس JWT_SECRET و رمز مدیر را تغییر دهید
+npm install
+npx prisma generate
+npx prisma db push
+npm run db:seed
+npm run dev               # http://localhost:4000
+```
+
+مستندات کامل API و فهرست endpointها در [`server/README.md`](./server/README.md).
+
+> توجه: GitHub Pages فقط فایل‌های استاتیک (فرانت‌اند) را میزبانی می‌کند. بک‌اند را روی
+> یک سرویس Node مانند **Render** (فایل `render.yaml` آماده است) یا با **Docker** مستقر کنید.
+
+## 🚀 استقرار یک‌مرحله‌ای (فرانت + بک‌اند با یک لینک)
+
+این پروژه به‌صورت **یک سرویس واحد** قابل استقرار است: بک‌اند هم API را سرو می‌کند
+و هم فرانت‌اند build‌شده را. کافیست روی Render یک Blueprint بسازید:
+
+1. وارد [Render](https://dashboard.render.com/blueprints) شوید → **New → Blueprint**.
+2. ریپوی `mehr-safar-booking` را انتخاب کنید (فایل `render.yaml` در ریشه به‌صورت خودکار خوانده می‌شود).
+3. **Apply** را بزنید. Render فرانت را build می‌کند، در `server/public` کپی می‌کند، بک‌اند را build و دیتابیس را seed می‌کند و سرویس را بالا می‌آورد.
+4. پس از چند دقیقه یک آدرس مانند `https://mehr-safar-app.onrender.com` می‌گیرید که **کل اپ** روی آن کار می‌کند.
+
+فرانت‌اند به‌صورت پیش‌فرض API را از همان دامنه (`/api`) می‌خواند، پس نیازی به تنظیم اضافه نیست.
+برای استقرار جدا (فرانت روی Pages و بک‌اند جای دیگر) متغیر `VITE_API_BASE` را هنگام build فرانت تنظیم کنید.
+
+> دیتابیس پیش‌فرض SQLite است؛ روی پلن رایگان Render دیسک موقت است و با هر ری‌استارت
+> داده‌ها دوباره seed می‌شوند (برای تست عالی است). برای ماندگاری، یک دیسک Render اضافه کنید
+> یا provider را در `prisma/schema.prisma` به PostgreSQL تغییر دهید.

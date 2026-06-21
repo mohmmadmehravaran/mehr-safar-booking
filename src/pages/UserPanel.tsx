@@ -157,7 +157,7 @@ export default function UserPanel() {
             <motion.div
               initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
               className="relative overflow-hidden rounded-3xl p-6 text-white"
-              style={{ background: `linear-gradient(135deg, ${theme.colors.heroBgFrom}, ${theme.colors.heroBgTo})` }}
+              style={{ background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})` }}
             >
               <div className="absolute inset-0 opacity-10 pointer-events-none">
                 <div className="absolute -top-10 -left-10 w-44 h-44 rounded-full blur-3xl bg-white" />
@@ -386,9 +386,9 @@ function AccountSection({ user, isSyntheticEmail, editing, setEditing, updatePro
   const [form, setForm] = useState({ fullName: user.fullName, email: isSyntheticEmail ? '' : user.email, phone: user.phone });
   const [alert, setAlert] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  const save = (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    const r = updateProfile(form);
+    const r = await updateProfile(form);
     setAlert({ ok: r.success, msg: r.message });
     if (r.success) setEditing(false);
   };
