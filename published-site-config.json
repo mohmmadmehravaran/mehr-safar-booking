@@ -1,6 +1,6 @@
 {
-  "version": 1781961717533,
-  "publishedAt": "2026-06-20T13:21:57.533Z",
+  "version": 1781977854194,
+  "publishedAt": "2026-06-20T17:50:54.194Z",
   "theme": {
     "colors": {
       "primary": "#2563eb",
@@ -72,39 +72,8 @@
     }
   },
   "edits": {
-    "/register§§div:0/div:0/main:0/div:0/div:0/div:1": {
-      "bgGradient": "linear-gradient(225deg, #22d3ee 0%, #0369a1 100%)",
-      "zIndex": 10
-    },
-    "/register§§div:0/div:0/main:0/div:0/div:1/div:0/div:0/a:1/span:0": {
-      "color": "#2969ed"
-    },
-    "/register§§div:0/div:0/main:0/div:0/div:1/div:0/div:0/a:0/span:0/svg:0": {
-      "color": "#2a6bee"
-    },
-    "/register§§div:0/div:0/main:0/div:0/div:1/div:0/div:0/a:0/span:0": {
-      "color": "#2767ec"
-    },
-    "/login§§div:0/div:0/main:0/div:0/div:0/div:1": {
-      "bgGradient": "linear-gradient(225deg, #22d3ee 0%, #0369a1 100%)"
-    },
-    "/login§§div:0/div:0/main:0/div:0/div:1/div:0/div:0/a:0/span:0": {
-      "color": "#2c6cee"
-    },
-    "/login§§div:0/div:0/main:0/div:0/div:1/div:0/div:0/a:1/span:0": {
-      "color": "#2a6aee"
-    },
-    "/track§§div:0/div:0/main:0/div:0/div:0/div:1": {
-      "bgGradient": "linear-gradient(225deg, #22d3ee 0%, #0369a1 100%)",
-      "zIndex": 0
-    },
-    "/track§§div:0/div:0/main:0/div:0/div:1/div:0": {
-      "zIndex": 60,
-      "bgColor": "#ffffff"
-    },
-    "/§§div:0/div:0/main:0/div:0/section:0/div:1/div:0/div:0/div:0/button:0": {
-      "bgGradient": "linear-gradient(135deg, #424fff, #1b21d0)",
-      "bgColor": "#2c1891"
+    "/account§§div:0/div:0/main:0/div:0/div:0/div:1": {
+      "color": "#000000"
     }
   },
   "widgets": [],
