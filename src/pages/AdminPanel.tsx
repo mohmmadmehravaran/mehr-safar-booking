@@ -12,6 +12,8 @@ import { PROVINCE_NAMES, getCitiesForProvince, findProvinceOfCity } from '../dat
 import { motion, AnimatePresence } from 'framer-motion';
 import AppearancePanel from '../components/admin/AppearancePanel';
 import CardsManager from '../components/admin/CardsManager';
+import { useCards } from '../context/CardsContext';
+import { useAllPages } from '../components/admin/PickerModals';
 import { useDocumentTitle } from '../utils/useDocumentTitle';
 import { fileToCompressedDataURL } from '../utils/image';
 
@@ -33,6 +35,12 @@ export default function AdminPanel() {
   // Hotel form
   const [showHotelForm, setShowHotelForm] = useState(false);
   const [editingHotel, setEditingHotel] = useState<HotelType | null>(null);
+  // Optional: which page to drop a hotel card onto when saving ('' = none).
+  const [cardTargetPage, setCardTargetPage] = useState<string>('');
+  const { addCardTo } = useCards();
+  const allPages = useAllPages();
+  // Only pages that actually render card sections: home + custom pages.
+  const cardablePages = allPages.filter((p) => p.path === '/' || p.path.startsWith('/page/'));
   const [hotelForm, setHotelForm] = useState<Partial<HotelType>>({
     name: '', province: '', city: '', address: '', stars: 3, type: 'هتل', review: 'خوب', reviewScore: 7,
     pricePerNight: 0, description: '', phone: '', email: '', amenities: [], images: [''],
@@ -66,6 +74,20 @@ export default function AdminPanel() {
     } else {
       addHotel(hotelData);
     }
+
+    // Optionally drop a hotel card onto the chosen page (live), linking to this hotel.
+    if (cardTargetPage) {
+      const cover = (hotelData.images || []).find(Boolean) || '';
+      addCardTo(cardTargetPage, {
+        type: 'hotel',
+        title: hotelData.name,
+        subtitle: hotelData.city,
+        image: cover,
+        link: `/hotel/${hotelData.id}`,
+      });
+    }
+
+    setCardTargetPage('');
     setShowHotelForm(false);
     setEditingHotel(null);
     setHotelForm({
@@ -78,6 +100,7 @@ export default function AdminPanel() {
   const openEditHotel = (hotel: HotelType) => {
     setEditingHotel(hotel);
     setNewImageUrl('');
+    setCardTargetPage('');
     setHotelForm({ ...hotel, province: hotel.province || findProvinceOfCity(hotel.city) });
     setShowHotelForm(true);
   };
@@ -85,6 +108,7 @@ export default function AdminPanel() {
   const openNewHotel = () => {
     setEditingHotel(null);
     setNewImageUrl('');
+    setCardTargetPage('');
     setHotelForm({
       name: '', province: '', city: '', address: '', stars: 3, type: 'هتل', review: 'خوب', reviewScore: 7,
       pricePerNight: 0, description: '', phone: '', email: '', amenities: [], images: [''],
@@ -883,6 +907,28 @@ export default function AdminPanel() {
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="featured" checked={hotelForm.isFeatured || false} onChange={(e) => setHotelForm((prev) => ({ ...prev, isFeatured: e.target.checked }))} className="w-4 h-4 accent-emerald-600" />
                 <label htmlFor="featured" className="text-sm text-gray-600">نمایش در بخش ویژه</label>
+              </div>
+
+              {/* Target page for an auto-generated hotel card */}
+              <div className="sm:col-span-2 p-3 bg-teal-50/70 border border-teal-200 rounded-xl">
+                <label className="flex items-center gap-1.5 text-sm font-bold text-teal-800 mb-1.5">
+                  <LayoutGrid className="w-4 h-4 text-teal-600" />
+                  افزودن کارت این هتل به صفحه
+                </label>
+                <select
+                  value={cardTargetPage}
+                  onChange={(e) => setCardTargetPage(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-teal-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                >
+                  <option value="">— کارتی ساخته نشود —</option>
+                  {cardablePages.map((p) => (
+                    <option key={p.path} value={p.path}>{p.label}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-teal-700/80 mt-1.5 leading-relaxed">
+                  در صورت انتخاب، یک کارت برای این هتل به‌صورت زنده در صفحهٔ انتخاب‌شده اضافه می‌شود و به صفحهٔ جزئیات همین هتل لینک می‌خورد.
+                  (کارت‌ها فقط در «صفحهٔ اصلی» و «صفحات سفارشی» نمایش داده می‌شوند.)
+                </p>
               </div>
             </div>
             <div className="flex gap-3 pt-4 mt-4 border-t border-gray-100">

@@ -10,6 +10,7 @@ interface CardsContextType {
   removeGroup: (id: string) => void;
   moveGroup: (id: string, dir: -1 | 1) => void;
   addCard: (groupId: string, type?: SiteCardType) => void;
+  addCardTo: (page: string, card: Omit<SiteCard, 'id'>) => void;
   updateCard: (groupId: string, cardId: string, partial: Partial<SiteCard>) => void;
   removeCard: (groupId: string, cardId: string) => void;
   moveCard: (groupId: string, cardId: string, dir: -1 | 1) => void;
@@ -90,6 +91,22 @@ export function CardsProvider({ children }: { children: ReactNode }) {
       )
     );
 
+  // Append a fully-populated card to a page. Uses the first existing group on
+  // that page, or creates a new group if the page has none yet. Used by the
+  // "add hotel" form to drop a hotel card onto a chosen page.
+  const addCardTo = (page: string, card: Omit<SiteCard, 'id'>) =>
+    setGroups((g) => {
+      const newCard: SiteCard = { id: uid(), ...card };
+      const idx = g.findIndex((grp) => (grp.page ?? '/') === page);
+      if (idx >= 0) {
+        return g.map((grp, i) => (i === idx ? { ...grp, cards: [...grp.cards, newCard] } : grp));
+      }
+      return [
+        ...g,
+        { id: uid(), page, title: '', layout: 'horizontal', cardHeight: 208, minCardWidth: 280, cards: [newCard] },
+      ];
+    });
+
   const removeCard = (groupId: string, cardId: string) =>
     setGroups((g) =>
       g.map((grp) =>
@@ -112,7 +129,7 @@ export function CardsProvider({ children }: { children: ReactNode }) {
 
   return (
     <CardsContext.Provider
-      value={{ groups, addGroup, updateGroup, removeGroup, moveGroup, addCard, updateCard, removeCard, moveCard }}
+      value={{ groups, addGroup, updateGroup, removeGroup, moveGroup, addCard, addCardTo, updateCard, removeCard, moveCard }}
     >
       {children}
     </CardsContext.Provider>
