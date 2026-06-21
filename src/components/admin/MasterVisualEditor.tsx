@@ -12,6 +12,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   collectSnapTargets, computeSnap, snapEdge, setGuides, clearGuides,
   getMagnet, setMagnet, subscribeMagnet,
+  getSelectionColor, setSelectionColor, subscribeSelectionColor,
+  hexToRgba, shadeColor, DEFAULT_SELECTION_COLOR,
 } from '../../utils/editorGuides';
 import SnapOverlay from './SnapOverlay';
 import { useSyncExternalStore } from 'react';
@@ -30,6 +32,11 @@ import { FONT_LIBRARY, ensureFontLoaded, preloadAllFonts } from '../../utils/fon
 /* useMagnet — subscribe to the magnet-enabled toggle */
 function useMagnet() {
   return useSyncExternalStore(subscribeMagnet, getMagnet, getMagnet);
+}
+
+/* useSelectionColor — subscribe to the editor selection-highlight color */
+function useSelectionColor() {
+  return useSyncExternalStore(subscribeSelectionColor, getSelectionColor, getSelectionColor);
 }
 
 /* ─── Layers-panel open/close store (shared by toolbar + controller) ─── */
@@ -130,6 +137,7 @@ function GradientBuilder({ current, onApply }: { current?: string; onApply: (v: 
 
 function SelectionBox({ path }: { path: string }) {
   const { edits, setElementEdit, customWidgets } = useSiteEdits();
+  const selColor = useSelectionColor();
   const el = findByDomPath(path);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const wLocked = path.startsWith('widget-id:')
@@ -246,11 +254,11 @@ function SelectionBox({ path }: { path: string }) {
         left: rect.left,
         width: rect.width,
         height: rect.height,
-        border: '2px solid #10b981',
+        border: `2px solid ${selColor}`,
         borderRadius: 6,
         pointerEvents: 'none',
         zIndex: 9990,
-        boxShadow: '0 0 0 1px white, 0 0 15px rgba(16,185,129,0.3)',
+        boxShadow: `0 0 0 1px white, 0 0 15px ${hexToRgba(selColor, 0.3)}`,
       }}
     >
       {/* Drag Move Handle */}
@@ -268,7 +276,7 @@ function SelectionBox({ path }: { path: string }) {
           alignItems: 'center',
           gap: 6,
           padding: '5px 12px',
-          background: 'linear-gradient(135deg, #10b981, #059669)',
+          background: `linear-gradient(135deg, ${selColor}, ${shadeColor(selColor, 0.25)})`,
           color: 'white',
           borderRadius: '8px 8px 0 8px',
           fontSize: 12,
@@ -277,7 +285,7 @@ function SelectionBox({ path }: { path: string }) {
           pointerEvents: 'auto',
           userSelect: 'none',
           touchAction: 'none',
-          boxShadow: '0 4px 12px rgba(16,185,129,0.4)',
+          boxShadow: `0 4px 12px ${hexToRgba(selColor, 0.4)}`,
           fontFamily: "'Vazirmatn', sans-serif",
         }}
       >
@@ -298,6 +306,7 @@ type RDir = 'e' | 'w' | 's' | 'n' | 'se' | 'sw' | 'ne' | 'nw';
 
 function ResizeHandles({ el, path }: { el: HTMLElement; path: string; rect?: DOMRect }) {
   const { edits, setElementEdit } = useSiteEdits();
+  const selColor = useSelectionColor();
   const rDrag = useRef<{
     startX: number; startY: number; startW: number; startH: number;
     startElemX: number; startElemY: number; startRect: DOMRect; targets: DOMRect[];
@@ -384,7 +393,7 @@ function ResizeHandles({ el, path }: { el: HTMLElement; path: string; rect?: DOM
         width: 14,
         height: 14,
         background: '#ffffff',
-        border: '3px solid #10b981',
+        border: `3px solid ${selColor}`,
         borderRadius: '50%',
         cursor,
         pointerEvents: 'auto',
@@ -1290,6 +1299,7 @@ function MasterToolbar() {
   const [showHeaderLinksManager, setShowHeaderLinksManager] = useState(false);
   const allPages = useAllPages();
   const magnet = useMagnet();
+  const selColor = useSelectionColor();
   const layersOpen = useLayersOpen();
 
   // Draggable toolbar position (null = default centered top position)
@@ -1503,6 +1513,33 @@ function MasterToolbar() {
           <Magnet className="w-3.5 h-3.5" />
           <span>{magnet ? 'مگنت روشن' : 'مگنت خاموش'}</span>
         </button>
+
+        {/* Selection-highlight color — pick ANY color for the editor selection box */}
+        <div
+          title="رنگ کادر انتخاب در ویرایشگر — هر رنگی می‌توانید بدهید"
+          className="flex items-center gap-1.5 px-3 py-1 font-bold rounded-full bg-gray-100 text-gray-600"
+        >
+          <span>رنگ انتخاب</span>
+          <input
+            type="color"
+            value={selColor}
+            onChange={(e) => setSelectionColor(e.target.value)}
+            title="انتخاب رنگ دلخواه"
+            aria-label="انتخاب رنگ کادر انتخاب"
+            className="w-6 h-6 rounded-md border border-gray-300 bg-transparent cursor-pointer p-0"
+            style={{ appearance: 'none', WebkitAppearance: 'none' }}
+          />
+          {selColor.toLowerCase() !== DEFAULT_SELECTION_COLOR.toLowerCase() && (
+            <button
+              type="button"
+              onClick={() => setSelectionColor(DEFAULT_SELECTION_COLOR)}
+              title="بازگشت به رنگ پیش‌فرض"
+              className="text-[13px] leading-none text-gray-400 hover:text-gray-700"
+            >
+              ↺
+            </button>
+          )}
+        </div>
 
         <button
           onClick={() => { setSelectedPath(null); setIsVisualEditing(false); }}
