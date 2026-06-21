@@ -8,6 +8,8 @@ export interface ThemeColors {
   accent: string;
   headerBg: string;
   headerText: string;
+  navActiveBg: string;
+  navActiveText: string;
   footerBg: string;
   footerText: string;
   heroBgFrom: string;
@@ -88,6 +90,8 @@ const defaultTheme: SiteTheme = {
     accent: '#f59e0b',
     headerBg: '#ffffff',
     headerText: '#374151',
+    navActiveBg: '#dbeafe',
+    navActiveText: '#2563eb',
     footerBg: '#1e293b',
     footerText: '#cbd5e1',
     heroBgFrom: '#e0f2fe',
@@ -197,6 +201,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty('--color-primary-light', theme.colors.primaryLight);
     root.style.setProperty('--color-header-bg', theme.colors.headerBg);
     root.style.setProperty('--color-header-text', theme.colors.headerText);
+    root.style.setProperty('--color-nav-active-bg', theme.colors.navActiveBg);
+    root.style.setProperty('--color-nav-active-text', theme.colors.navActiveText);
     root.style.setProperty('--color-footer-bg', theme.colors.footerBg);
     root.style.setProperty('--color-footer-text', theme.colors.footerText);
     root.style.setProperty('--color-hero-from', theme.colors.heroBgFrom);

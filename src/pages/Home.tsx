@@ -3,6 +3,7 @@ import { Search, Award, TrendingUp, Heart } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import HotelCard from '../components/HotelCard';
+import CardSections from '../components/CardSections';
 import CitySearchSelect from '../components/CitySearchSelect';
 import FilterPanel from '../components/FilterPanel';
 import PersianRangeDatePicker from '../components/PersianRangeDatePicker';
@@ -143,6 +144,9 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
+
+      {/* ── CUSTOM CARD SECTIONS (built in admin → کارت‌ها) ── */}
+      <CardSections />
 
       {/* ── HOTELS ── */}
       <section id="hotels" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" style={{ scrollMarginTop: theme.sizes.headerHeight + 24 }}>
