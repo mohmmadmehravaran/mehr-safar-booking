@@ -90,11 +90,15 @@ export interface SiteCard {
   image: string; // image URL
   link: string; // internal path ("/...") or external URL ("https://...")
   badge?: string; // optional small label
+  colSpan?: number; // طول کارت: تعداد ستون‌هایی که کارت در چیدمان شبکه‌ای اشغال می‌کند (پیش‌فرض ۱)
 }
 
 export interface CardGroup {
   id: string;
+  page?: string; // route this card section belongs to (e.g. "/" or "/page/about-123"). Default "/" (home)
   title: string; // optional section heading
   layout: 'vertical' | 'horizontal'; // زیر هم | رو به روی هم
+  cardHeight?: number; // ارتفاع کارت‌ها بر حسب پیکسل (پیش‌فرض ۲۰۸)
+  minCardWidth?: number; // حداقل عرض هر کارت در چیدمان شبکه‌ای بر حسب پیکسل (پیش‌فرض ۲۸۰) — برای ریسپانسیو ماندن خودکار
   cards: SiteCard[];
 }
