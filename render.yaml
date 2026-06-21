@@ -6,7 +6,7 @@ services:
     name: mehr-safar-app
     runtime: node
     plan: free
-    buildCommand: "npm install && npm run build && mkdir -p server/public && cp dist/index.template.html server/public/index.html && (cp -f published-site-config.json server/public/ || true) && cd server && npm install && npx prisma generate && npm run build"
+    buildCommand: "npm install --include=dev && npm run build && mkdir -p server/public && cp dist/index.template.html server/public/index.html && (cp -f published-site-config.json server/public/ || true) && cd server && npm install --include=dev && npx prisma generate && npm run build"
     startCommand: "cd server && npx prisma db push --skip-generate && npm run db:seed && npm start"
     healthCheckPath: /health
     envVars:
