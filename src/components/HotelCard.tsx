@@ -1,5 +1,6 @@
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Wifi, Car, UtensilsCrossed, Dumbbell, Waves, Coffee, ArrowLeft } from 'lucide-react';
+import { MapPin, Wifi, Car, UtensilsCrossed, Dumbbell, Waves, Coffee, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Hotel } from '../types';
 import StarRating from './StarRating';
 import ReviewBadge from './ReviewBadge';
@@ -25,6 +26,108 @@ interface HotelCardProps {
 export default function HotelCard({ hotel, index = 0 }: HotelCardProps) {
   const { theme } = useTheme();
 
+  // Image carousel ("ورق زدن") — flip through the hotel's photos on the card itself.
+  const images = hotel.images && hotel.images.length ? hotel.images : [''];
+  const [current, setCurrent] = useState(0);
+  const safeCurrent = Math.min(current, images.length - 1);
+
+  const go = (e: React.MouseEvent, dir: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrent((c) => {
+      const len = images.length;
+      return (Math.min(c, len - 1) + dir + len) % len;
+    });
+  };
+
+  const select = (e: React.MouseEvent, i: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrent(i);
+  };
+
+  // ── Drag scrubbing for mobile AND desktop ──
+  // کاربر کلیک/لمس را نگه می‌دارد و با حرکت چپ↔راست، عکس‌ها پشت‌سرهم ورق می‌خورند.
+  const drag = useRef<{ x: number; y: number; lastX: number; active: boolean; axis: null | 'h' | 'v' }>(
+    { x: 0, y: 0, lastX: 0, active: false, axis: null }
+  );
+  const swiped = useRef(false);
+  const STEP = 55; // هر این مقدار حرکت افقی → یک عکس جلو/عقب
+
+  const step = (dir: number) => {
+    swiped.current = true; // علامت بزن تا کلیک بعدی صفحه هتل را باز نکند
+    setCurrent((c) => {
+      const len = images.length;
+      return (Math.min(c, len - 1) + dir + len) % len;
+    });
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return; // فقط کلیک چپ
+    if ((e.target as HTMLElement).closest('button')) return; // فلش/نقطه‌ها خودشان کار کنند
+    if (images.length <= 1) return;
+    drag.current = { x: e.clientX, y: e.clientY, lastX: e.clientX, active: true, axis: null };
+    swiped.current = false;
+    // فقط برای ماوس قفل کن (تا روی موبایل اسکرول عمودی آزاد بماند)
+    if (e.pointerType === 'mouse') {
+      try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* noop */ }
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d.active) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    // تعیین جهت حرکت در اولین جابه‌جایی محسوس
+    if (d.axis === null) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      d.axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+      if (d.axis === 'v') { d.active = false; return; } // حرکت عمودی → بگذار صفحه اسکرول شود
+    }
+    if (d.axis !== 'h') return;
+    // فقط دسکتاپ (ماوس): اسکراب پیوسته حین نگه‌داشتن و حرکت.
+    // موبایل (لمس): اینجا کاری نمی‌کنیم؛ یک سوایپ ساده در پایان حساب می‌شود.
+    if (e.pointerType !== 'mouse') return;
+    let move = e.clientX - d.lastX;
+    while (Math.abs(move) >= STEP) {
+      const fwd = move > 0;
+      step(fwd ? -1 : 1); // RTL: حرکت به راست → عکس قبلی، به چپ → عکس بعدی
+      d.lastX += fwd ? STEP : -STEP;
+      move = e.clientX - d.lastX;
+    }
+  };
+
+  const endDrag = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (e.pointerType === 'mouse') {
+      try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
+    }
+    if (d.active && d.axis !== 'v') {
+      const dx = e.clientX - d.x;
+      const dy = e.clientY - d.y;
+      if (e.pointerType === 'mouse') {
+        // دسکتاپ: اگر کشیدن کوتاه بود و هنوز عکسی عوض نشده، یک عکس ورق بزن
+        if (!swiped.current && Math.abs(dx) >= 30 && Math.abs(dx) > Math.abs(dy)) step(dx > 0 ? -1 : 1);
+      } else {
+        // موبایل: یک سوایپ ساده = یک عکس (بدون نیاز به نگه‌داشتن)
+        const TOUCH_THRESHOLD = 35;
+        if (Math.abs(dx) >= TOUCH_THRESHOLD && Math.abs(dx) > Math.abs(dy)) step(dx > 0 ? -1 : 1);
+      }
+    }
+    d.active = false;
+    d.axis = null;
+  };
+
+  // بعد از کشیدن، مرورگر یک کلیک تولید می‌کند؛ آن را لغو کن تا <Link> ناوبری نکند.
+  const handleClickCapture = (e: React.MouseEvent) => {
+    if (swiped.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      swiped.current = false;
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -40,18 +143,70 @@ export default function HotelCard({ hotel, index = 0 }: HotelCardProps) {
       whileHover={{ y: -6 }}
     >
       <Link to={`/hotel/${hotel.id}`} className="block">
-        {/* Image */}
-        <div className="relative overflow-hidden" style={{ height: theme.sizes.cardImageHeight }}>
-          <img
-            src={hotel.images[0]}
-            alt={`تصویر ${hotel.name} در ${hotel.city}`}
-            loading="lazy"
-            decoding="async"
-            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-          />
-          
+        {/* Image carousel */}
+        <div
+          className="relative overflow-hidden touch-pan-y select-none cursor-grab active:cursor-grabbing"
+          style={{ height: theme.sizes.cardImageHeight }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onDragStart={(e) => e.preventDefault()}
+          onClickCapture={handleClickCapture}
+        >
+          {images.map((img, i) => (
+            <img
+              key={i}
+              src={img}
+              alt={`تصویر ${i + 1} ${hotel.name} در ${hotel.city}`}
+              loading="lazy"
+              decoding="async"
+              draggable={false}
+              className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-110 ${
+                i === safeCurrent ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+          ))}
+
           {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent pointer-events-none" />
+
+          {/* Carousel controls (only with more than one image) */}
+          {images.length > 1 && (
+            <>
+              <button
+                type="button"
+                aria-label="تصویر بعدی"
+                onClick={(e) => go(e, 1)}
+                className="absolute top-1/2 left-2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/85 backdrop-blur-md shadow-lg flex items-center justify-center text-gray-700 opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:bg-white transition-all z-10"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                aria-label="تصویر قبلی"
+                onClick={(e) => go(e, -1)}
+                className="absolute top-1/2 right-2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/85 backdrop-blur-md shadow-lg flex items-center justify-center text-gray-700 opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:bg-white transition-all z-10"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+
+              {/* Dots */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-label={`رفتن به تصویر ${i + 1}`}
+                    onClick={(e) => select(e, i)}
+                    className={`rounded-full transition-all ${
+                      i === safeCurrent ? 'w-5 h-2 bg-white' : 'w-2 h-2 bg-white/60 hover:bg-white/90'
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Type badge */}
           <div className="absolute top-3 right-3">

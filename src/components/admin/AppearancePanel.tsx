@@ -211,6 +211,8 @@ export default function AppearancePanel() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <ColorPicker label="پس‌زمینه هدر" value={theme.colors.headerBg} onChange={(v) => updateColors({ headerBg: v })} />
                       <ColorPicker label="متن هدر" value={theme.colors.headerText} onChange={(v) => updateColors({ headerText: v })} />
+                      <ColorPicker label="پس‌زمینه لینک فعال منو" value={theme.colors.navActiveBg || '#dbeafe'} onChange={(v) => updateColors({ navActiveBg: v })} />
+                      <ColorPicker label="متن لینک فعال منو" value={theme.colors.navActiveText || '#2563eb'} onChange={(v) => updateColors({ navActiveText: v })} />
                       <ColorPicker label="پس‌زمینه فوتر" value={theme.colors.footerBg} onChange={(v) => updateColors({ footerBg: v })} />
                       <ColorPicker label="متن فوتر" value={theme.colors.footerText} onChange={(v) => updateColors({ footerText: v })} />
                     </div>

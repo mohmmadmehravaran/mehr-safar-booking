@@ -9,13 +9,28 @@ const isExternal = (to: string) => /^https?:\/\//i.test(to) || to.startsWith('ma
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState<'home' | 'hotels'>('home');
   const { isAdmin, logoutAdmin, adminName, currentUser, logoutUser } = useApp();
   const { theme } = useTheme();
   const { headerLinks } = useSiteEdits();
   const location = useLocation();
   const navigate = useNavigate();
 
+  const onHome = location.pathname === '/';
+
+  const goToHome = () => {
+    setActiveSection('home');
+    const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(scrollTop, 300);
+    } else {
+      scrollTop();
+    }
+  };
+
   const goToHotels = () => {
+    setActiveSection('hotels');
     const scroll = () => document.getElementById('hotels')?.scrollIntoView({ behavior: 'smooth' });
     if (location.pathname !== '/') {
       navigate('/');
@@ -25,11 +40,24 @@ export default function Header() {
     }
   };
 
+  // Scroll spy: keep the active nav button (home / hotels) in sync with the
+  // section the user is currently looking at while on the home page.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 20);
+      if (location.pathname !== '/') return;
+      const hotelsEl = document.getElementById('hotels');
+      if (!hotelsEl) {
+        setActiveSection('home');
+        return;
+      }
+      const threshold = (typeof theme.sizes.headerHeight === 'number' ? theme.sizes.headerHeight : 64) + 40;
+      setActiveSection(hotelsEl.getBoundingClientRect().top <= threshold ? 'hotels' : 'home');
+    };
+    onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  }, [location.pathname, theme.sizes.headerHeight]);
 
   return (
     <header
@@ -66,15 +94,12 @@ export default function Header() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1">
-            <NavLink to="/" active={location.pathname === '/'} scrolled={scrolled}>
+            <NavButton onClick={goToHome} active={onHome && activeSection === 'home'}>
               خانه
-            </NavLink>
-            <button
-              onClick={goToHotels}
-              className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 text-gray-700 hover:bg-gray-100 cursor-pointer"
-            >
+            </NavButton>
+            <NavButton onClick={goToHotels} active={onHome && activeSection === 'hotels'}>
               هتل‌ها
-            </button>
+            </NavButton>
             {isAdmin && (
               <NavLink to="/admin" active={location.pathname === '/admin'} scrolled={scrolled}>
                 پنل مدیریت
@@ -163,17 +188,36 @@ export default function Header() {
   );
 }
 
+function NavButton({ onClick, active, children }: { onClick: () => void; active: boolean; children: React.ReactNode }) {
+  const { theme } = useTheme();
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 cursor-pointer ${
+        active ? '' : 'text-gray-700 hover:bg-gray-100'
+      }`}
+      style={active ? {
+        backgroundColor: theme.colors.navActiveBg || '#dbeafe',
+        color: theme.colors.navActiveText || '#2563eb',
+      } : undefined}
+    >
+      {children}
+    </button>
+  );
+}
+
 function NavLink({ to, active, scrolled, children, hash }: { to: string; active: boolean; scrolled: boolean; children: React.ReactNode; hash?: string }) {
+  const { theme } = useTheme();
   return (
     <Link
       to={hash ? `${to}${hash}` : to}
       className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-        active
-          ? 'bg-emerald-50 text-emerald-700'
-          : scrolled
-          ? 'text-gray-700 hover:bg-gray-100'
-          : 'text-gray-700 hover:bg-gray-100'
+        active ? '' : 'text-gray-700 hover:bg-gray-100'
       }`}
+      style={active ? {
+        backgroundColor: theme.colors.navActiveBg || '#dbeafe',
+        color: theme.colors.navActiveText || '#2563eb',
+      } : undefined}
     >
       {children}
     </Link>
