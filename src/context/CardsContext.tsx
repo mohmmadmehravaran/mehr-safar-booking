@@ -5,7 +5,7 @@ const STORAGE_KEY = 'mehrsafar-card-groups';
 
 interface CardsContextType {
   groups: CardGroup[];
-  addGroup: () => string;
+  addGroup: (page?: string) => string;
   updateGroup: (id: string, partial: Partial<CardGroup>) => void;
   removeGroup: (id: string) => void;
   moveGroup: (id: string, dir: -1 | 1) => void;
@@ -40,9 +40,9 @@ export function CardsProvider({ children }: { children: ReactNode }) {
     }
   }, [groups]);
 
-  const addGroup = () => {
+  const addGroup = (page: string = '/') => {
     const id = uid();
-    setGroups((g) => [...g, { id, title: 'بخش جدید', layout: 'horizontal', cards: [] }]);
+    setGroups((g) => [...g, { id, page, title: 'بخش جدید', layout: 'horizontal', cardHeight: 208, minCardWidth: 280, cards: [] }]);
     return id;
   };
 
@@ -54,8 +54,13 @@ export function CardsProvider({ children }: { children: ReactNode }) {
   const moveGroup = (id: string, dir: -1 | 1) =>
     setGroups((g) => {
       const i = g.findIndex((x) => x.id === id);
-      const j = i + dir;
-      if (i < 0 || j < 0 || j >= g.length) return g;
+      if (i < 0) return g;
+      // Page-aware reorder: only swap with the nearest group on the SAME page,
+      // so reordering on one page never disturbs another page's sections.
+      const pg = g[i].page ?? '/';
+      let j = i + dir;
+      while (j >= 0 && j < g.length && (g[j].page ?? '/') !== pg) j += dir;
+      if (j < 0 || j >= g.length) return g;
       const next = [...g];
       [next[i], next[j]] = [next[j], next[i]];
       return next;

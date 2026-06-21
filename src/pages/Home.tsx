@@ -66,7 +66,7 @@ export default function Home() {
           <div className="absolute bottom-0 -right-32 w-[400px] h-[400px] rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#60a5fa' }} />
         </div>
 
-        <div className="relative mx-auto px-4 sm:px-6 lg:px-8" style={{ maxWidth: theme.sizes.maxContentWidth, paddingTop: theme.sizes.heroTopPadding + 20, paddingBottom: theme.sizes.heroBottomPadding + 40 }}>
+        <div className="relative mx-auto px-4 sm:px-6 lg:px-8" style={{ maxWidth: theme.sizes.maxContentWidth, paddingTop: theme.sizes.heroTopPadding + 20, paddingBottom: theme.sizes.heroBottomPadding }}>
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }} className="text-center max-w-4xl mx-auto">
 
             <h1 className="text-3xl md:text-5xl lg:text-6xl font-black mb-5 leading-tight" style={{ fontFamily: `'${theme.fonts.heading}'`, fontWeight: theme.fonts.headingWeight, color: theme.colors.textPrimary }}>
@@ -129,7 +129,7 @@ export default function Home() {
             </motion.div>
 
             {/* Stats */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="grid grid-cols-3 gap-4 mt-10 max-w-lg mx-auto">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="grid grid-cols-3 gap-4 mt-6 max-w-lg mx-auto">
               {[
                 { val: theme.texts.statsHotels, label: 'هتل و اقامتگاه' },
                 { val: theme.texts.statsCities, label: 'شهر' },
