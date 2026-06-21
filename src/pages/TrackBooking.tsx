@@ -1,31 +1,32 @@
 import { useState } from 'react';
 import { Search, CalendarCheck, Hotel, Phone, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useApp } from '../context/AppContext';
+import { api } from '../api';
+import type { Booking } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { formatJalali } from '../utils/date';
 import { useDocumentTitle } from '../utils/useDocumentTitle';
 
 export default function TrackBooking() {
-  const { bookings } = useApp();
   const { theme } = useTheme();
   useDocumentTitle('پیگیری رزرو');
   const [query, setQuery] = useState('');
-  const [result, setResult] = useState<{ found: boolean; data?: typeof bookings[0] } | null>(null);
+  const [result, setResult] = useState<{ found: boolean; data?: Booking } | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const q = query.trim();
     if (!q) return;
     setLoading(true);
-    setTimeout(() => {
-      const found = bookings.find(
-        (b) => b.guestPhone.replace(/\D/g, '').includes(q.replace(/\D/g, '')) || String(b.id) === q
-      );
-      setResult(found ? { found: true, data: found } : { found: false });
+    try {
+      const data = await api.trackBooking(q);
+      setResult({ found: true, data });
+    } catch {
+      setResult({ found: false });
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   };
 
   const statusMeta = {
@@ -38,12 +39,12 @@ export default function TrackBooking() {
     <div className="min-h-screen pb-24 md:pb-0" style={{ backgroundColor: theme.colors.bodyBg }}>
 
       {/* ── APP HEADER ── */}
-      <div className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${theme.colors.heroBgFrom}, ${theme.colors.heroBgTo})` }}>
+      <div className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})` }}>
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <div className="absolute top-8 right-8 w-40 h-40 rounded-full blur-3xl bg-white" />
           <div className="absolute bottom-0 left-4 w-28 h-28 rounded-full blur-2xl" style={{ backgroundColor: theme.colors.primary }} />
         </div>
-        <div className="relative px-6 pt-10 pb-16 text-center text-white">
+        <div className="relative px-6 pt-10 pb-24 text-center text-white">
           <motion.div initial={{ scale: 0, y: 16 }} animate={{ scale: 1, y: 0 }} className="w-16 h-16 rounded-3xl bg-white/20 backdrop-blur-xl mx-auto mb-4 flex items-center justify-center shadow-lg">
             <CalendarCheck className="w-8 h-8" />
           </motion.div>
@@ -53,7 +54,7 @@ export default function TrackBooking() {
       </div>
 
       {/* ── SEARCH CARD ── */}
-      <div className="px-5 -mt-8 max-w-xl mx-auto">
+      <div className="px-5 -mt-16 max-w-xl mx-auto relative z-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-3xl p-6 shadow-soft-xl" style={{ backgroundColor: theme.colors.cardBg, border: `1px solid ${theme.colors.cardBorder}` }}>
           <form onSubmit={handleSearch} className="flex flex-col gap-3">
             <div className="relative">

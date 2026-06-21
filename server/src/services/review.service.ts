@@ -3,6 +3,10 @@ import { ApiError } from '../utils/ApiError.js';
 import type { CreateReviewInput } from '../schemas/review.schema.js';
 
 export const reviewService = {
+  async listAll() {
+    return prisma.review.findMany({ orderBy: { createdAt: 'desc' } });
+  },
+
   async listForHotel(hotelId: number) {
     return prisma.review.findMany({ where: { hotelId }, orderBy: { createdAt: 'desc' } });
   },

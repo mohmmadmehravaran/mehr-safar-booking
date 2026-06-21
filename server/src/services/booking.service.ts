@@ -56,9 +56,18 @@ export const bookingService = {
     return prisma.booking.findMany({ orderBy: { createdAt: 'desc' } });
   },
 
-  async track(code: string) {
-    const booking = await prisma.booking.findUnique({ where: { code: code.toUpperCase() } });
-    if (!booking) throw ApiError.notFound('رزروی با این کد پیگیری یافت نشد.');
+  // Public tracking: match by tracking code (case-insensitive) OR guest phone.
+  async track(q: string) {
+    const query = q.trim();
+    const digits = query.replace(/\D/g, '');
+    let booking = await prisma.booking.findUnique({ where: { code: query.toUpperCase() } });
+    if (!booking && digits.length >= 7) {
+      booking = await prisma.booking.findFirst({
+        where: { guestPhone: { contains: digits } },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+    if (!booking) throw ApiError.notFound('رزروی با این کد پیگیری یا شماره موبایل یافت نشد.');
     return booking;
   },
 

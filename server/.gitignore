@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.log
+.env
+.env.local
+# SQLite db files
+*.db
+*.db-journal
+prisma/dev.db*
+prisma/*.db*
+coverage/
+.DS_Store
+
+# generated frontend build (single-service deploy)
+public/

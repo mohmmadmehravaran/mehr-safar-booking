@@ -1,3 +1,6 @@
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { existsSync } from 'node:fs';
 import express, { type Application } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -12,7 +15,7 @@ export function createApp(): Application {
   const app = express();
 
   app.set('trust proxy', 1);
-  app.use(helmet());
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
   app.use(
     cors({
       origin: env.corsOrigins,
@@ -29,6 +32,19 @@ export function createApp(): Application {
 
   // API
   app.use('/api', apiLimiter, routes);
+
+  // ── Serve the built frontend (single-service deploy) ──
+  // The Vite build is copied to ./public during the build step. When present,
+  // we serve it and fall back to index.html for client-side routes.
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const publicDir = join(__dirname, '..', 'public');
+  if (existsSync(join(publicDir, 'index.html'))) {
+    app.use(express.static(publicDir));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api') || req.path === '/health') return next();
+      res.sendFile(join(publicDir, 'index.html'));
+    });
+  }
 
   // Errors
   app.use(notFoundHandler);
