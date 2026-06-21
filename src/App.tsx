@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { SiteEditsProvider } from './context/SiteEditsContext';
+import { CardsProvider } from './context/CardsContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import MobileBottomNav from './components/MobileBottomNav';
@@ -22,6 +23,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <SiteEditsProvider>
+        <CardsProvider>
         <AppProvider>
           <HashRouter>
             <ScrollToTop />
@@ -48,6 +50,7 @@ export default function App() {
             <EditModeFab />
           </HashRouter>
         </AppProvider>
+        </CardsProvider>
       </SiteEditsProvider>
     </ThemeProvider>
   );
