@@ -59,13 +59,7 @@ export default function Home() {
     <div className="min-h-screen pb-20 md:pb-0" style={{ backgroundColor: theme.colors.bodyBg }}>
 
       {/* ── HERO ── */}
-      <section className="relative overflow-hidden" style={{ background: `linear-gradient(180deg, ${theme.colors.heroBgFrom}, ${theme.colors.heroBgVia} 50%, ${theme.colors.heroBgTo})`, color: theme.colors.heroText }}>
-        {/* Soft decorative blobs */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full blur-3xl opacity-20" style={{ backgroundColor: '#93c5fd' }} />
-          <div className="absolute bottom-0 -right-32 w-[400px] h-[400px] rounded-full blur-3xl opacity-15" style={{ backgroundColor: '#60a5fa' }} />
-        </div>
-
+      <section className="relative" style={{ backgroundColor: theme.colors.bodyBg }}>
         <div className="relative mx-auto px-4 sm:px-6 lg:px-8" style={{ maxWidth: theme.sizes.maxContentWidth, paddingTop: theme.sizes.heroTopPadding + 20, paddingBottom: theme.sizes.heroBottomPadding }}>
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }} className="text-center max-w-4xl mx-auto">
 
