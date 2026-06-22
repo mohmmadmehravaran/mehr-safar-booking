@@ -76,6 +76,27 @@ export interface CustomWidget {
   shape?: ShapeKind;
   // Stay fixed in the viewport while scrolling (matches the sticky header)
   pinned?: boolean;
+  // When true, the widget is rendered BEHIND the page content (inside the nearest
+  // site section as a backdrop), instead of floating on top of everything.
+  behind?: boolean;
+  // Responsive anchor for backdrops: the widget's geometry stored as fractions of
+  // its host section (center-x, center-y, width fraction, aspect ratio h/w). These
+  // are captured automatically while editing on desktop and let the backdrop stay
+  // centered + proportional behind the same element on every screen size (mobile).
+  bcx?: number;
+  bcy?: number;
+  bwf?: number;
+  bar?: number;
+  // Stronger responsive anchor for backdrops: a DOM path to the in-flow element
+  // the backdrop sits behind (e.g. the search box) plus the backdrop's geometry
+  // as fractions of THAT element. Captured on desktop. On mobile the section can
+  // reflow (the search box moves), so anchoring to the real element keeps the
+  // banner glued to the search card on every screen. Falls back to bcx/bcy/bwf/bar.
+  tgt?: string;   // DOM path of the element the backdrop sits behind
+  tlf?: number;   // backdrop left offset / target width
+  ttf?: number;   // backdrop top offset / target height
+  twf?: number;   // backdrop width / target width
+  thf?: number;   // backdrop height / target height
   x: number;
   y: number;
   width: number;
@@ -106,6 +127,8 @@ export interface CustomWidget {
   locked?: boolean;      // when true the element can't be moved/resized/selected on canvas
   hidden?: boolean;      // visibility toggle from the layers panel
   name?: string;         // custom layer name shown in the layers panel
+  designWidth?: number;  // viewport width during design
+  designHeight?: number; // viewport height during design
 }
 
 export type EditsRegistry = Record<string, StyleEdits>;
@@ -117,14 +140,22 @@ interface SiteEditsContextType {
   resetAllEdits: () => void;
   selectedPath: string | null;
   setSelectedPath: (p: string | null) => void;
+  // Photoshop-style placement: where a newly added element lands relative to the selected layer.
+  insertMode: 'above' | 'below';
+  setInsertMode: (m: 'above' | 'below') => void;
   customWidgets: CustomWidget[];
   addCustomWidget: (type: WidgetType, fileOrSrc?: File | string, page?: string, preset?: Partial<CustomWidget>) => Promise<void>;
   updateCustomWidget: (id: string, partial: Partial<CustomWidget>) => void;
+  setWidgetBackdrop: (id: string, partial: Partial<CustomWidget>) => void;
   removeCustomWidget: (id: string) => void;
   updateWidgetZIndex: (id: string, zIndex: number) => void;
   moveWidgetLayer: (id: string, direction: 'up' | 'down' | 'top' | 'bottom') => void;
   duplicateWidget: (id: string) => void;
   reorderWidgets: (orderedTopToBottomIds: string[]) => void;
+  // Native elements promoted to manageable layers (page-scoped DOM paths)
+  layerPaths: string[];
+  promoteToLayer: (path: string) => void;
+  demoteLayer: (path: string) => void;
   // Custom pages (no-code page builder)
   customPages: CustomPage[];
   addCustomPage: (label: string, icon?: string) => string; // returns the new page path
@@ -143,8 +174,12 @@ const STORAGE_KEY = 'mehrsafar-visual-edits-2026';
 const WIDGETS_STORAGE_KEY = 'mehrsafar-visual-widgets-2026';
 const PAGES_STORAGE_KEY = 'mehrsafar-custom-pages-2026';
 const HEADER_LINKS_STORAGE_KEY = 'mehrsafar-header-links-2026';
+const LAYER_PATHS_STORAGE_KEY = 'mehrsafar-layer-paths-2026';
 
 function applySingleEdit(el: HTMLElement, edit: StyleEdits) {
+  // Check if we are on mobile/tablet (screen width < 1024px)
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+
   // 1. Text/Value/Placeholder/Src/Href
   // Important: ONLY apply text override if it's actually different.
   // And ONLY for leaf nodes that don't have SVGs or other icons inside.
@@ -178,8 +213,9 @@ function applySingleEdit(el: HTMLElement, edit: StyleEdits) {
   }
 
   // 2. Transform (Move)
-  const x = edit.x || 0;
-  const y = edit.y || 0;
+  // Skip move translation on mobile to let elements return to their responsive natural position
+  const x = !isMobile ? (edit.x || 0) : 0;
+  const y = !isMobile ? (edit.y || 0) : 0;
   if (x !== 0 || y !== 0) {
     el.style.transform = `translate3d(${x}px, ${y}px, 0px)`;
     el.style.transition = 'none'; // Overcome hover CSS transitions jumping
@@ -206,7 +242,8 @@ function applySingleEdit(el: HTMLElement, edit: StyleEdits) {
   }
 
   // 3. Dimensions
-  if (edit.width !== undefined) {
+  // Skip custom pixel sizing on mobile to let elements fit responsively on smaller screens
+  if (edit.width !== undefined && !isMobile) {
     el.style.width = `${edit.width}px`;
     el.style.minWidth = `${edit.width}px`;
     el.style.maxWidth = `${edit.width}px`;
@@ -219,7 +256,7 @@ function applySingleEdit(el: HTMLElement, edit: StyleEdits) {
     el.style.removeProperty('flex');
     el.style.removeProperty('box-sizing');
   }
-  if (edit.height !== undefined) {
+  if (edit.height !== undefined && !isMobile) {
     el.style.height = `${edit.height}px`;
     el.style.minHeight = `${edit.height}px`;
     el.style.maxHeight = `${edit.height}px`;
@@ -239,10 +276,10 @@ function applySingleEdit(el: HTMLElement, edit: StyleEdits) {
 
   if (edit.fontFamily !== undefined) el.style.fontFamily = edit.fontFamily;
   else el.style.removeProperty('font-family');
-  
+
   if (edit.color !== undefined) el.style.color = edit.color;
   else el.style.removeProperty('color');
-  
+
   if (edit.bgColor !== undefined) el.style.backgroundColor = edit.bgColor;
   else el.style.removeProperty('background-color');
 
@@ -259,10 +296,10 @@ function applySingleEdit(el: HTMLElement, edit: StyleEdits) {
   }
   if (edit.padding !== undefined) el.style.padding = `${edit.padding}px`;
   else el.style.removeProperty('padding');
-  
+
   if (edit.borderRadius !== undefined) el.style.borderRadius = `${edit.borderRadius}px`;
   else el.style.removeProperty('border-radius');
-  
+
   if (edit.textAlign !== undefined) el.style.textAlign = edit.textAlign;
   else el.style.removeProperty('text-align');
 
@@ -280,7 +317,6 @@ function applySingleEdit(el: HTMLElement, edit: StyleEdits) {
   } else {
     el.style.removeProperty('backdrop-filter');
     el.style.removeProperty('-webkit-backdrop-filter');
-    // only remove bg if it was added by glass
   }
 
   // 7. Stroke (border)
@@ -337,6 +373,8 @@ export function SiteEditsProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  // Where new layers are inserted relative to the currently selected layer (Photoshop-style).
+  const [insertMode, setInsertMode] = useState<'above' | 'below'>('above');
   // Undo history stacks
   const editsHistory = useRef<EditsRegistry[]>([]);
   const widgetsHistory = useRef<CustomWidget[][]>([]);
@@ -377,10 +415,25 @@ export function SiteEditsProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
+  // Native page elements the user explicitly "converted to a layer" (page-scoped DOM paths).
+  const [layerPaths, setLayerPaths] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(LAYER_PATHS_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const editsRef = useRef(edits);
   editsRef.current = edits;
   const customWidgetsRef = useRef(customWidgets);
   customWidgetsRef.current = customWidgets;
+  // Live refs so addCustomWidget (async) always reads the latest selection + insert mode.
+  const selectedPathRef = useRef(selectedPath);
+  selectedPathRef.current = selectedPath;
+  const insertModeRef = useRef(insertMode);
+  insertModeRef.current = insertMode;
 
   // Save to localStorage
   useEffect(() => {
@@ -414,6 +467,14 @@ export function SiteEditsProvider({ children }: { children: React.ReactNode }) {
       console.warn('ذخیره‌ی دکمه‌های هدر ناموفق بود.', e);
     }
   }, [headerLinks]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAYER_PATHS_STORAGE_KEY, JSON.stringify(layerPaths));
+    } catch (e) {
+      console.warn('ذخیره‌ی لایه‌های افزوده‌شده ناموفق بود.', e);
+    }
+  }, [layerPaths]);
 
   // High performance sync loop
   useEffect(() => {
@@ -614,19 +675,82 @@ export function SiteEditsProvider({ children }: { children: React.ReactNode }) {
       height: 200,
       radius: 16,
       padding: 0,
+      designWidth: typeof window !== 'undefined' ? window.innerWidth : 1280,
+      designHeight: typeof window !== 'undefined' ? window.innerHeight : 800,
       ...defaults[type],
       ...(preset || {}),
     };
 
+    const targetPage = page || '/';
     pushSnapshot();
-    setCustomWidgets((prev) => [...prev, newWidget]);
+    setCustomWidgets((prev) => {
+      const next = [...prev, newWidget];
+      const mode = insertModeRef.current;            // 'above' | 'below'
+      const sel = selectedPathRef.current;
+      const selId = sel && sel.startsWith('widget-id:') ? sel.slice('widget-id:'.length) : null;
+      const selWidget = selId ? prev.find((w) => w.id === selId && w.page === targetPage) : null;
+
+      if (selWidget) {
+        // A custom layer is selected → drop the new layer directly above/below it,
+        // then renumber z-index for every layer on this page (top → bottom), Photoshop-style.
+        const order = prev
+          .filter((w) => w.page === targetPage)
+          .sort((a, b) => (b.zIndex ?? 25) - (a.zIndex ?? 25))
+          .map((w) => w.id);
+        const selIdx = order.indexOf(selId as string);
+        const insertAt = mode === 'above' ? selIdx : selIdx + 1; // smaller index = higher on stack
+        order.splice(insertAt, 0, id);
+        const n = order.length;
+        const zById: Record<string, number> = {};
+        order.forEach((wid, i) => { zById[wid] = 25 + (n - i); });
+        // Inherit the "behind page content" flag from the selected layer so a new
+        // layer added below a backdrop also stays a backdrop.
+        return next.map((w) => {
+          if (w.id === id) return { ...w, zIndex: zById[w.id], behind: selWidget.behind || undefined };
+          return (w.id in zById ? { ...w, zIndex: zById[w.id] } : w);
+        });
+      }
+
+      // Nothing (or a native site section) is selected:
+      //   'above' → float the new layer on top of the whole page (high z-index)
+      //   'below' → tuck it BEHIND the page content. We mark it `behind` so the
+      //             widgets layer renders it inside the nearest site section as a
+      //             backdrop (above that section's background, below its content),
+      //             which actually places it under the search box / cards instead
+      //             of hiding it behind the whole opaque page.
+      const pageZ = prev.filter((w) => w.page === targetPage).map((w) => w.zIndex ?? 25);
+      if (mode === 'below') {
+        const minZ = Math.min(0, ...pageZ);
+        return next.map((w) => (w.id === id ? { ...w, zIndex: minZ - 1, behind: true } : w));
+      }
+      const maxZ = Math.max(25, ...pageZ);
+      return next.map((w) => (w.id === id ? { ...w, zIndex: maxZ + 1 } : w));
+    });
     setSelectedPath(`widget-id:${id}`);
   }, [pushSnapshot]);
 
   const updateCustomWidget = useCallback((id: string, partial: Partial<CustomWidget>) => {
     pushSnapshot();
-    setCustomWidgets((prev) => prev.map((w) => (w.id === id ? { ...w, ...partial } : w)));
+    setCustomWidgets((prev) => prev.map((w) => {
+      if (w.id === id) {
+        const layoutKeys = ['x', 'y', 'width', 'height'];
+        const hasLayoutUpdate = Object.keys(partial).some(k => layoutKeys.includes(k));
+        const extra = hasLayoutUpdate ? {
+          designWidth: typeof window !== 'undefined' ? window.innerWidth : 1280,
+          designHeight: typeof window !== 'undefined' ? window.innerHeight : 800
+        } : {};
+        return { ...w, ...partial, ...extra };
+      }
+      return w;
+    }));
   }, [pushSnapshot]);
+
+  // Silent updater for auto-captured backdrop geometry. Does NOT push an undo
+  // snapshot (so it never pollutes the user's undo stack), but still persists to
+  // storage like any other widget change.
+  const setWidgetBackdrop = useCallback((id: string, partial: Partial<CustomWidget>) => {
+    setCustomWidgets((prev) => prev.map((w) => (w.id === id ? { ...w, ...partial } : w)));
+  }, []);
 
   const removeCustomWidget = useCallback((id: string) => {
     pushSnapshot();
@@ -740,6 +864,17 @@ export function SiteEditsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  /* ─── Convert a clicked native element into a manageable layer ─── */
+  const promoteToLayer = useCallback((path: string) => {
+    if (!path || path.startsWith('widget-id:')) return; // widgets are already layers
+    setLayerPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
+    setSelectedPath(path);
+  }, []);
+
+  const demoteLayer = useCallback((path: string) => {
+    setLayerPaths((prev) => prev.filter((p) => p !== path));
+  }, []);
+
   return (
     <SiteEditsContext.Provider
       value={{
@@ -749,14 +884,20 @@ export function SiteEditsProvider({ children }: { children: React.ReactNode }) {
         resetAllEdits,
         selectedPath,
         setSelectedPath,
+        insertMode,
+        setInsertMode,
         customWidgets,
         addCustomWidget,
         updateCustomWidget,
+        setWidgetBackdrop,
         removeCustomWidget,
         updateWidgetZIndex,
         moveWidgetLayer,
         duplicateWidget,
         reorderWidgets,
+        layerPaths,
+        promoteToLayer,
+        demoteLayer,
         customPages,
         addCustomPage,
         updateCustomPage,
