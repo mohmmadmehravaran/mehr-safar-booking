@@ -1,4 +1,5 @@
 import { HashRouter, Routes, Route } from 'react-router-dom';
+import { MotionConfig } from 'framer-motion';
 import { AppProvider } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { SiteEditsProvider } from './context/SiteEditsContext';
@@ -21,6 +22,7 @@ import CustomPage from './pages/CustomPage';
 
 export default function App() {
   return (
+    <MotionConfig reducedMotion="always" transition={{ duration: 0 }}>
     <ThemeProvider>
       <SiteEditsProvider>
         <CardsProvider>
@@ -43,6 +45,8 @@ export default function App() {
                 </Routes>
               </main>
               <Footer />
+              {/* فاصلهٔ ایمنی تا انتهای فوتر روی موبایل زیر نوار پایین (MobileBottomNav) پنهان نشود */}
+              <div className="h-16 md:hidden" aria-hidden="true" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} />
             </div>
             <MobileBottomNav />
             <CustomWidgetsLayer />
@@ -53,5 +57,6 @@ export default function App() {
         </CardsProvider>
       </SiteEditsProvider>
     </ThemeProvider>
+    </MotionConfig>
   );
 }

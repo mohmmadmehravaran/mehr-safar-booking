@@ -257,3 +257,117 @@ html,
 body {
   overflow-anchor: none;
 }
+
+
+/* ─── Visual editor polish ─────────────────────────────────────────── */
+@keyframes editorFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.editor-fade { animation: editorFade 0.22s ease-out; }
+
+@keyframes inspectorIn {
+  from { opacity: 0; transform: translateX(-14px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+.inspector-in { animation: inspectorIn 0.24s cubic-bezier(0.34, 1.4, 0.64, 1); }
+
+/* Resize handles grow gently on hover for an easier, smoother grab. */
+.se-handle:hover {
+  transform: translate(-50%, -50%) scale(1.32) !important;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.32) !important;
+}
+
+
+/* ─── Mobile card carousel ─────────────────────────────────────────────────
+   روی موبایل، گروه‌های کارت (کارت‌های سفارشی و کارت‌های هتل) به‌جای تک‌ستونه شدن،
+   به‌صورت افقی و کنار هم نمایش داده می‌شوند و کاربر می‌تواند با کشیدن انگشت از
+   چپ‌به‌راست یا راست‌به‌چپ کارت‌ها را جابه‌جا کند (اسکرول افقی با اسنپ).
+   روی تبلت/دسکتاپ (≥ ۶۴۰px) همان چیدمان گرید قبلی حفظ می‌شود. */
+@media (max-width: 639px) {
+  .card-carousel {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    grid-template-columns: none !important;
+    overflow-x: auto;
+    overflow-y: hidden;   /* فقط حرکت افقی؛ هیچ جابه‌جایی عمودی داخل کاروسل نباشد */
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+    overscroll-behavior-x: contain;
+    gap: 0.85rem;
+    /* فضای تنفس کناری تا کارت‌های اسنپ‌شده زیبا تراز شوند */
+    scroll-padding-inline: 0.25rem;
+    padding-bottom: 0.85rem;
+    margin-inline: -1rem;          /* لبه‌به‌لبه با عرض کانتینر صفحه */
+    padding-inline: 1rem;
+  }
+  /* پنهان‌کردن نوار اسکرول برای ظاهر تمیزتر */
+  .card-carousel::-webkit-scrollbar { display: none; }
+  .card-carousel {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  /* هر کارت کمی کمتر از کل عرض تا کارت بعدی «سرک» بکشد و سوایپ‌پذیری معلوم شود */
+  .card-carousel > * {
+    flex: 0 0 82% !important;
+    width: 82% !important;
+    min-width: 82% !important;
+    max-width: 82% !important;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+}
+
+
+/* گالری عکس صفحهٔ جزییات روی موبایل — پنهان‌کردن نوار اسکرول */
+.detail-gallery-scroll::-webkit-scrollbar { display: none; }
+.detail-gallery-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+   شبکهٔ ایمنی ریسپانسیو سراسری
+   تضمین می‌کند روی هر اندازهٔ نمایشگری (از گوشی‌های خیلی کوچک تا دسکتاپ)
+   هیچ‌گاه اسکرول/بهم‌ریختگی افقی در کل صفحه رخ ندهد.
+   از overflow-x: clip استفاده می‌شود (نه hidden) تا چسبندگی sticky نشکند.
+   ────────────────────────────────────────────────────────────────────────── */
+html {
+  overflow-x: clip;
+}
+body {
+  overflow-x: clip;
+  max-width: 100%;
+  /* رشته‌های طولانیِ غیرقابل‌شکست (مثل لینک یا شمارهٔ بلند) به‌جای بیرون‌زدن از کادر، می‌شکنند */
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* تصاویر و رسانه‌ها هیچ‌گاه از عرض ظرفِ خود فراتر نمی‌روند */
+img, video, canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* روی نمایشگرهای بسیار باریک (کمتر از ۳۶۰px) پدینگ کانتینرها کمی کاهش می‌یابد
+   تا محتوا فشرده نشود و بیرون نزند */
+@media (max-width: 360px) {
+  .px-4 { padding-left: 0.75rem; padding-right: 0.75rem; }
+}
+
+
+/* ───────────────────────────────────────────────────────────────
+   حذف کامل انیمیشن‌ها در کل سایت (به‌درخواست کاربر).
+   همه‌ی transition / animation ها فوری می‌شوند و scroll نرم خاموش
+   می‌شود. تغییر حالت‌ها (hover، باز/بسته شدن و ...) همچنان کار می‌کنند
+   ولی بدون هیچ انیمیشن یا پرشی.
+   ─────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}
+html { scroll-behavior: auto !important; }
+.float, .shimmer, .pulse-ring, .editor-fade, .inspector-in { animation: none !important; }
