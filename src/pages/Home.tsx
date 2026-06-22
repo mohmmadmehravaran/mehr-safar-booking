@@ -69,78 +69,52 @@ export default function Home() {
         <div className="relative mx-auto px-4 sm:px-6 lg:px-8" style={{ maxWidth: theme.sizes.maxContentWidth, paddingTop: theme.sizes.heroTopPadding + 20, paddingBottom: theme.sizes.heroBottomPadding }}>
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }} className="text-center max-w-4xl mx-auto">
 
-            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black mb-5 leading-tight" style={{ fontFamily: `'${theme.fonts.heading}'`, fontWeight: theme.fonts.headingWeight, color: theme.colors.textPrimary }}>
-              {theme.texts.heroTitle}
-            </h1>
-            <p className="text-base md:text-lg mb-10 leading-relaxed max-w-2xl mx-auto" style={{ color: theme.colors.textSecondary }}>
-              {theme.texts.heroSubtitle}
-            </p>
-
             {/* Search box - clean white card */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+            <div
               className="bg-white rounded-2xl shadow-soft-xl max-w-4xl mx-auto p-5 md:p-6"
               style={{ border: `1px solid ${theme.colors.cardBorder}` }}
             >
-              <div className="flex flex-col gap-4">
-                {/* Inputs Row */}
-                <div className="flex flex-col md:flex-row gap-3">
-                  {/* City Search */}
-                  <div className="flex-1 relative">
-                    <CitySearchSelect
-                      value={searchInput}
-                      onChange={handleCityInputChange}
-                      onSelect={applyCity}
-                      placeholder={theme.texts.searchPlaceholder}
-                    />
-                  </div>
-
-                  {/* Date Range */}
-                  <div className="flex-1">
-                    <PersianRangeDatePicker
-                      checkIn={filters.checkIn}
-                      checkOut={filters.checkOut}
-                      onCheckInChange={handleCheckInChange}
-                      onCheckOutChange={handleCheckOutChange}
-                      minDate={todayISO}
-                      className="w-full"
-                      placeholder="تاریخ ورود  ←  تاریخ خروج"
-                    />
-                  </div>
+              <div className="flex flex-col md:flex-row gap-3">
+                {/* City */}
+                <div className="flex-1 relative">
+                  <CitySearchSelect
+                    value={searchInput}
+                    onChange={handleCityInputChange}
+                    onSelect={applyCity}
+                    placeholder={theme.texts.searchPlaceholder}
+                  />
                 </div>
 
-                {/* Search Button */}
-                <motion.button
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
+                {/* Check-in / Check-out date range */}
+                <div className="flex-1">
+                  <PersianRangeDatePicker
+                    checkIn={filters.checkIn}
+                    checkOut={filters.checkOut}
+                    onCheckInChange={handleCheckInChange}
+                    onCheckOutChange={handleCheckOutChange}
+                    minDate={todayISO}
+                    className="w-full"
+                    placeholder="تاریخ ورود  ←  تاریخ خروج"
+                  />
+                </div>
+
+                {/* Search button */}
+                <button
+                  type="button"
                   onClick={handleSearch}
-                  className="flex items-center justify-center gap-3 py-3.5 text-white font-bold text-base rounded-xl transition-all w-full"
-                  style={{ 
-                    background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`, 
-                    boxShadow: `0 4px 16px ${theme.colors.primary}40` 
+                  className="flex items-center justify-center gap-2 px-6 py-3.5 text-white font-bold text-base rounded-xl w-full md:w-auto"
+                  style={{
+                    background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
+                    boxShadow: `0 4px 16px ${theme.colors.primary}40`,
                   }}
                 >
                   <Search className="w-5 h-5" />
                   <span>جستجو</span>
-                </motion.button>
+                </button>
               </div>
-            </motion.div>
+            </div>
 
-            {/* Stats */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="grid grid-cols-3 gap-4 mt-6 max-w-lg mx-auto">
-              {[
-                { val: theme.texts.statsHotels, label: 'هتل و اقامتگاه' },
-                { val: theme.texts.statsCities, label: 'شهر' },
-                { val: theme.texts.statsSatisfaction, label: 'رضایت مشتریان' },
-              ].map((s) => (
-                <div key={s.label} className="text-center">
-                  <div className="text-2xl md:text-3xl font-black mb-0.5">{s.val}</div>
-                  <div className="text-xs opacity-75">{s.label}</div>
-                </div>
-              ))}
-            </motion.div>
+            
           </motion.div>
         </div>
       </section>
@@ -197,7 +171,7 @@ export default function Home() {
                       <Award className="w-5 h-5" style={{ color: theme.colors.primary }} />
                       <h3 className="font-black" style={{ color: theme.colors.textPrimary }}>هتل‌های ویژه</h3>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 card-carousel">
                       {featuredHotels.map((h, i) => <HotelCard key={h.id} hotel={h} index={i} />)}
                     </div>
                   </div>
@@ -210,7 +184,7 @@ export default function Home() {
                         <h3 className="font-bold" style={{ color: theme.colors.textSecondary }}>سایر هتل‌ها</h3>
                       </div>
                     )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 card-carousel">
                       {regularHotels.map((h, i) => <HotelCard key={h.id} hotel={h} index={i} />)}
                     </div>
                   </div>
