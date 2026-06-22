@@ -22,6 +22,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
+      // حذف کامل انیمیشن‌ها: framer-motion با یک shim بدون‌انیمیشن جایگزین می‌شود.
+      "framer-motion": path.resolve(__dirname, "src/shims/framer-motion.tsx"),
     },
   },
 });
