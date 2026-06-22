@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Award, TrendingUp, Heart, Hotel, AlertTriangle } from 'lucide-react';
+import { Search, Award, TrendingUp, Heart, Building2, Home as HomeIcon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import HotelCard from '../components/HotelCard';
@@ -8,7 +8,8 @@ import CitySearchSelect from '../components/CitySearchSelect';
 import FilterPanel from '../components/FilterPanel';
 import PersianRangeDatePicker from '../components/PersianRangeDatePicker';
 import PersianDatePicker from '../components/PersianDatePicker';
-import heroBanner from '../assets/hero-banner.jpg';
+import DateRangeField from '../components/DateRangeField';
+import heroBg from '../assets/hero-bg.jpeg';
 import { motion } from 'framer-motion';
 import { getTodayJalali, gregorianToISO, jalaliToGregorian } from '../utils/date';
 import { useDocumentTitle } from '../utils/useDocumentTitle';
@@ -62,89 +63,78 @@ export default function Home() {
 
       {/* ── HERO ── */}
       <section className="relative" style={{ backgroundColor: theme.colors.bodyBg, isolation: 'isolate' }}>
-        <div className="relative mx-auto px-4 sm:px-6 lg:px-8" style={{ maxWidth: theme.sizes.maxContentWidth, paddingTop: theme.sizes.heroTopPadding + 20, paddingBottom: theme.sizes.heroBottomPadding }}>
+        <div className="relative mx-auto px-4 sm:px-6 lg:px-8" style={{ maxWidth: 1424, paddingTop: theme.sizes.heroTopPadding, paddingBottom: theme.sizes.heroBottomPadding }}>
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }} className="max-w-[1360px] mx-auto">
 
-          {/* Banner image */}
-          <div className="rounded-3xl overflow-hidden">
-            <img src={heroBanner} alt="مهر سفر" className="w-full h-40 sm:h-56 md:h-72 object-cover" />
-          </div>
+            {/* Hero banner image */}
+            <div className="relative">
+              <img
+                src={heroBg}
+                alt=""
+                className="w-full h-44 sm:h-60 md:h-[300px] object-cover rounded-3xl select-none pointer-events-none"
+              />
 
-          {/* Search card overlapping the bottom of the banner */}
-          <div
-            className="relative z-10 -mt-12 sm:-mt-16 md:-mt-20 mx-1 sm:mx-6 bg-white rounded-2xl shadow-soft-xl p-4 md:p-5"
-            style={{ border: `1px solid ${theme.colors.cardBorder}` }}
-          >
-            {/* Tabs */}
-            <div className="flex items-center justify-start gap-5 mb-4">
-              <button
-                type="button"
-                className="flex items-center gap-1.5 text-sm font-bold pb-1 border-b-2"
-                style={{ color: theme.colors.primary, borderColor: theme.colors.primary }}
+              {/* Search box - clean white card overlapping the banner */}
+              <div
+                className="relative z-10 bg-white rounded-2xl shadow-soft-xl mx-auto p-5 md:p-6 w-[94%] -mt-8 md:-mt-12"
+                style={{ border: `1px solid ${theme.colors.cardBorder}` }}
               >
-                <Hotel className="w-4 h-4" />
-                <span>هتل</span>
-              </button>
-              <button
-                type="button"
-                disabled
-                className="flex items-center gap-1.5 text-sm font-medium text-gray-400 cursor-not-allowed pb-1"
-                title="به‌زودی"
-              >
-                <AlertTriangle className="w-4 h-4" />
-                <span>ویلا و اقامتگاه</span>
-              </button>
+                {/* Section tab (hotel) */}
+                <div className="flex justify-start items-center gap-6 mb-4">
+                  <span
+                    className="inline-flex items-center gap-1.5 pb-2 font-bold text-sm border-b-2"
+                    style={{ color: theme.colors.primary, borderColor: theme.colors.primary }}
+                  >
+                    <Building2 className="w-4 h-4" />
+                    هتل
+                  </span>
+                  <span
+                    className="inline-flex items-center gap-1.5 pb-2 font-bold text-sm border-b-2 border-transparent cursor-pointer"
+                    style={{ color: theme.colors.textMuted }}
+                  >
+                    <HomeIcon className="w-4 h-4" />
+                    ویلا و اقامتگاه
+                  </span>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-3">
+                  {/* City */}
+                  <div className="flex-1 relative">
+                    <CitySearchSelect
+                      value={searchInput}
+                      onChange={handleCityInputChange}
+                      onSelect={applyCity}
+                      placeholder="مقصد یا هتل"
+                    />
+                  </div>
+
+                  {/* Check-in / Check-out date range */}
+                  <DateRangeField
+                    checkIn={filters.checkIn}
+                    checkOut={filters.checkOut}
+                    onCheckInChange={handleCheckInChange}
+                    onCheckOutChange={handleCheckOutChange}
+                    minDate={todayISO}
+                    className="flex-[2]"
+                  />
+
+                  {/* Search button */}
+                  <button
+                    type="button"
+                    onClick={handleSearch}
+                    className="flex items-center justify-center px-8 py-3.5 text-white font-bold text-base rounded-xl w-full md:w-auto"
+                    style={{
+                      backgroundColor: theme.colors.primary,
+                      boxShadow: `0 4px 16px ${theme.colors.primary}40`,
+                    }}
+                  >
+                    <span>جستجو</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {/* Search row */}
-            <div className="flex flex-col md:flex-row gap-3">
-              {/* Destination / hotel */}
-              <div className="flex-[2] relative">
-                <CitySearchSelect
-                  value={searchInput}
-                  onChange={handleCityInputChange}
-                  onSelect={applyCity}
-                  placeholder="مقصد یا هتل"
-                />
-              </div>
-
-              {/* Check-in date */}
-              <div className="flex-1">
-                <PersianDatePicker
-                  value={filters.checkIn}
-                  onChange={handleCheckInChange}
-                  minDate={todayISO}
-                  placeholder="تاریخ ورود"
-                  className="w-full"
-                />
-              </div>
-
-              {/* Check-out date */}
-              <div className="flex-1">
-                <PersianDatePicker
-                  value={filters.checkOut}
-                  onChange={handleCheckOutChange}
-                  minDate={filters.checkIn || todayISO}
-                  placeholder="تاریخ خروج"
-                  className="w-full"
-                />
-              </div>
-
-              {/* Search button */}
-              <button
-                type="button"
-                onClick={handleSearch}
-                className="flex items-center justify-center gap-2 px-8 py-3.5 text-white font-bold text-base rounded-xl w-full md:w-auto"
-                style={{
-                  background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
-                  boxShadow: `0 4px 16px ${theme.colors.primary}40`,
-                }}
-              >
-                <Search className="w-5 h-5" />
-                <span>جستجو</span>
-              </button>
-            </div>
-          </div>
-
+          </motion.div>
         </div>
       </section>
 
