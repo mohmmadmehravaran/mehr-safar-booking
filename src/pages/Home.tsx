@@ -59,13 +59,13 @@ export default function Home() {
     <div className="min-h-screen pb-20 md:pb-0" style={{ backgroundColor: theme.colors.bodyBg }}>
 
       {/* ── HERO ── */}
-      <section className="relative" style={{ backgroundColor: theme.colors.bodyBg }}>
+      <section className="relative" style={{ backgroundColor: theme.colors.bodyBg, isolation: 'isolate' }}>
         <div className="relative mx-auto px-4 sm:px-6 lg:px-8" style={{ maxWidth: theme.sizes.maxContentWidth, paddingTop: theme.sizes.heroTopPadding + 20, paddingBottom: theme.sizes.heroBottomPadding }}>
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }} className="text-center max-w-4xl mx-auto">
 
             {/* Search box - clean white card */}
             <div
-              className="bg-white rounded-2xl shadow-soft-xl max-w-4xl mx-auto p-5 md:p-6"
+              className="relative z-10 bg-white rounded-2xl shadow-soft-xl max-w-4xl mx-auto p-5 md:p-6"
               style={{ border: `1px solid ${theme.colors.cardBorder}` }}
             >
               <div className="flex flex-col md:flex-row gap-3">
