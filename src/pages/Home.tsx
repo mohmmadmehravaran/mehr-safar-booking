@@ -71,7 +71,7 @@ export default function Home() {
               <img
                 src={heroBg}
                 alt=""
-                className="w-full h-44 sm:h-60 md:h-[300px] object-cover rounded-3xl select-none pointer-events-none"
+                className="hero-banner-img w-full object-cover rounded-3xl select-none pointer-events-none"
               />
 
               {/* Search box - clean white card overlapping the banner */}

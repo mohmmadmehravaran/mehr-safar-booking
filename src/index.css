@@ -371,3 +371,11 @@ img, video, canvas {
 }
 html { scroll-behavior: auto !important; }
 .float, .shimmer, .pulse-ring, .editor-fade, .inspector-in { animation: none !important; }
+
+
+/* Hero banner image — explicit responsive height to match the reference design.
+   Uses a dedicated class (higher specificity than the global `img{height:auto}`
+   reset above) so the banner stays a fixed height instead of its natural aspect. */
+.hero-banner-img { height: 180px; }
+@media (min-width: 640px) { .hero-banner-img { height: 240px; } }
+@media (min-width: 768px) { .hero-banner-img { height: 300px; } }
