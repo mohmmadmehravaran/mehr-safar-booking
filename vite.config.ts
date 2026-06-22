@@ -13,6 +13,9 @@ export default defineConfig({
   base: "./",
   plugins: [react(), tailwindcss(), viteSingleFile()],
   build: {
+    // Inline ALL assets (incl. the hero banner image) as base64 so the
+    // single-file build stays self-contained with no external files.
+    assetsInlineLimit: 100000000,
     rollupOptions: {
       // Source HTML entry lives in index.template.html so the built single-file
       // bundle can be published as the repository-root index.html (GitHub Pages).
