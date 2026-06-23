@@ -131,7 +131,7 @@ export default function HotelCard({ hotel, index = 0 }: HotelCardProps) {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06, duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-      className="group relative overflow-hidden card-lift flex flex-col"
+      className="group relative overflow-hidden card-lift flex flex-col h-full"
       style={{
         backgroundColor: theme.colors.cardBg,
         borderRadius: theme.sizes.cardBorderRadius + 4,

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useCards } from '../context/CardsContext';
 import { useTheme } from '../context/ThemeContext';
 import { SiteCard } from '../types';
+import HotelCard from './HotelCard';
 
 function CardInner({ card }: { card: SiteCard }) {
   return (
@@ -12,7 +13,8 @@ function CardInner({ card }: { card: SiteCard }) {
           src={card.image}
           alt={card.title}
           loading="lazy"
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-110"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-110 pointer-events-none"
         />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300" />
@@ -92,12 +94,13 @@ export default function CardSections({ page = '/' }: { page?: string }) {
               </h2>
             )}
             <div
-              className={group.layout === 'vertical' ? 'flex flex-col gap-4' : ''}
+              className={group.layout === 'vertical' ? 'flex flex-col gap-4' : 'card-carousel'}
               style={gridStyle}
             >
               {group.cards.map((card, i) => (
                 <motion.div
                   key={card.id}
+                  className="flex flex-col h-full"
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -108,11 +111,16 @@ export default function CardSections({ page = '/' }: { page?: string }) {
                       : { gridColumn: `span ${Math.max(1, card.colSpan ?? 1)}` }
                   }
                 >
-                  <CardLink
-                    card={card}
-                    className="block w-full card-lift"
-                    style={{ height: cardHeight }}
-                  />
+                  {card.hotel ? (
+                    // کارت کامل هتل — دقیقاً مثل کارت‌های «هتل‌های ویژه»
+                    <HotelCard hotel={card.hotel} index={i} />
+                  ) : (
+                    <CardLink
+                      card={card}
+                      className="w-full card-lift flex-1 min-h-0"
+                      style={{ minHeight: cardHeight }}
+                    />
+                  )}
                 </motion.div>
               ))}
             </div>
