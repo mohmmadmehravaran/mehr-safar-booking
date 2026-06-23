@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Award, TrendingUp, Heart, Building2, Home as HomeIcon } from 'lucide-react';
+import { Search, Award, TrendingUp, Heart, Building2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import HotelCard from '../components/HotelCard';
@@ -15,7 +15,7 @@ import { getTodayJalali, gregorianToISO, jalaliToGregorian } from '../utils/date
 import { useDocumentTitle } from '../utils/useDocumentTitle';
 
 export default function Home() {
-  const { filteredHotels, filters, setFilters } = useApp();
+  const { filteredHotels, hotels, filters, setFilters } = useApp();
   const { theme } = useTheme();
   useDocumentTitle();
   const [searchInput, setSearchInput] = useState(filters.search);
@@ -23,15 +23,17 @@ export default function Home() {
   const today = getTodayJalali();
   const todayISO = gregorianToISO(jalaliToGregorian(today));
 
-  // Filter hotels by the chosen city (no scroll here — we only scroll once city + both dates are set).
-  const applyCity = (city: string) => {
-    const term = city.trim();
-    setFilters((prev) => ({ ...prev, city: term, search: '' }));
+  // Search hotels by city OR hotel name. We use the `search` filter (which matches
+  // hotel name, city and address) so EVERY hotel — including admin-added ones — is
+  // searchable from this box, whether the user types a city or a specific hotel.
+  const applyCity = (term0: string) => {
+    const term = term0.trim();
+    setFilters((prev) => ({ ...prev, search: term, city: '' }));
     setSearchInput(term);
   };
   const handleSearch = () => applyCity(searchInput);
   const clearCity = () => { setFilters((prev) => ({ ...prev, city: '', search: '' })); setSearchInput(''); };
-  // When the city text is cleared (manually or via the ✕ button), reset the city
+  // When the text is cleared (manually or via the ✕ button), reset the search
   // filter so the home page shows all default hotel cards again.
   const handleCityInputChange = (v: string) => {
     setSearchInput(v);
@@ -45,7 +47,7 @@ export default function Home() {
   // Scroll to the hotel cards only after the user has chosen a city AND both check-in and check-out dates.
   const didScrollRef = useRef(false);
   useEffect(() => {
-    const ready = Boolean(filters.city && filters.checkIn && filters.checkOut);
+    const ready = Boolean(filters.search && filters.checkIn && filters.checkOut);
     if (ready && !didScrollRef.current) {
       didScrollRef.current = true;
       setTimeout(() => document.getElementById('hotels')?.scrollIntoView({ behavior: 'smooth' }), 80);
@@ -53,7 +55,7 @@ export default function Home() {
       // Reset so the scroll fires again next time the selection is completed.
       didScrollRef.current = false;
     }
-  }, [filters.city, filters.checkIn, filters.checkOut]);
+  }, [filters.search, filters.checkIn, filters.checkOut]);
 
   const featuredHotels = filteredHotels.filter((h) => h.isFeatured);
   const regularHotels = filteredHotels.filter((h) => !h.isFeatured);
@@ -86,14 +88,7 @@ export default function Home() {
                     style={{ color: theme.colors.primary, borderColor: theme.colors.primary }}
                   >
                     <Building2 className="w-4 h-4" />
-                    هتل
-                  </span>
-                  <span
-                    className="inline-flex items-center gap-1.5 pb-2 font-bold text-sm border-b-2 border-transparent cursor-pointer"
-                    style={{ color: theme.colors.textMuted }}
-                  >
-                    <HomeIcon className="w-4 h-4" />
-                    ویلا و اقامتگاه
+                    هتل یا اقامتگاه
                   </span>
                 </div>
 
@@ -104,6 +99,7 @@ export default function Home() {
                       value={searchInput}
                       onChange={handleCityInputChange}
                       onSelect={applyCity}
+                      hotels={hotels}
                       placeholder="مقصد یا هتل"
                     />
                   </div>
@@ -145,7 +141,7 @@ export default function Home() {
       <section id="hotels" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" style={{ scrollMarginTop: theme.sizes.headerHeight + 24 }}>
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters appear only after the user has entered a city AND both check-in and check-out dates */}
-          {filters.city && filters.checkIn && filters.checkOut && (
+          {filters.search && filters.checkIn && filters.checkOut && (
             <aside className="lg:w-80 flex-shrink-0">
               <FilterPanel />
             </aside>
@@ -155,17 +151,17 @@ export default function Home() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl font-black mb-1" style={{ color: theme.colors.textPrimary }}>
-                  {filters.city ? `هتل‌های ${filters.city}` : 'هتل‌ها و اقامتگاه‌ها'}
+                  {filters.search ? `نتایج جستجو: ${filters.search}` : 'هتل‌ها و اقامتگاه‌ها'}
                 </h2>
                 <div className="flex items-center gap-2">
                   <p className="text-sm" style={{ color: theme.colors.textSecondary }}>{filteredHotels.length} مورد یافت شد</p>
-                  {filters.city && (
+                  {filters.search && (
                     <button
                       onClick={clearCity}
                       className="text-xs font-bold px-2.5 py-1 rounded-full hover:opacity-80 transition-opacity"
                       style={{ backgroundColor: theme.colors.primaryLight, color: theme.colors.primary }}
                     >
-                      نمایش همه شهرها ✕
+                      نمایش همه ✕
                     </button>
                   )}
                 </div>
