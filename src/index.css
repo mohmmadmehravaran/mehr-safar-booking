@@ -128,12 +128,9 @@ input[type="range"]::-moz-range-thumb {
   mix-blend-mode: overlay;
 }
 
-/* Card hover lift */
+/* Card hover lift disabled — cards stay completely static on hover */
 .card-lift {
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.card-lift:hover {
-  transform: translateY(-4px);
+  transition: box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Soft shadow system */
@@ -371,11 +368,3 @@ img, video, canvas {
 }
 html { scroll-behavior: auto !important; }
 .float, .shimmer, .pulse-ring, .editor-fade, .inspector-in { animation: none !important; }
-
-
-/* Hero banner image — explicit responsive height to match the reference design.
-   Uses a dedicated class (higher specificity than the global `img{height:auto}`
-   reset above) so the banner stays a fixed height instead of its natural aspect. */
-.hero-banner-img { height: 180px; }
-@media (min-width: 640px) { .hero-banner-img { height: 240px; } }
-@media (min-width: 768px) { .hero-banner-img { height: 300px; } }

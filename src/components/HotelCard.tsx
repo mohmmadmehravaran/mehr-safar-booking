@@ -109,11 +109,9 @@ export default function HotelCard({ hotel, index = 0 }: HotelCardProps) {
       if (e.pointerType === 'mouse') {
         // دسکتاپ: اگر کشیدن کوتاه بود و هنوز عکسی عوض نشده، یک عکس ورق بزن
         if (!swiped.current && Math.abs(dx) >= 30 && Math.abs(dx) > Math.abs(dy)) step(dx > 0 ? -1 : 1);
-      } else {
-        // موبایل: یک سوایپ ساده = یک عکس (بدون نیاز به نگه‌داشتن)
-        const TOUCH_THRESHOLD = 35;
-        if (Math.abs(dx) >= TOUCH_THRESHOLD && Math.abs(dx) > Math.abs(dy)) step(dx > 0 ? -1 : 1);
       }
+        // موبایل: سوایپ افقی برای جابه‌جایی بین کارت‌ها (کاروسل) رزرو شده است؛
+        // ورق‌زدن عکس روی موبایل با دکمه‌های فلش و نقطه‌های پایین تصویر انجام می‌شود.
     }
     d.active = false;
     d.axis = null;
@@ -133,19 +131,18 @@ export default function HotelCard({ hotel, index = 0 }: HotelCardProps) {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06, duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-      className="group relative overflow-hidden card-lift"
+      className="group relative overflow-hidden card-lift flex flex-col"
       style={{
         backgroundColor: theme.colors.cardBg,
         borderRadius: theme.sizes.cardBorderRadius + 4,
         border: `1px solid ${theme.colors.cardBorder}`,
         boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06)',
       }}
-      whileHover={{ y: -6 }}
     >
-      <Link to={`/hotel/${hotel.id}`} className="block">
+      <Link to={`/hotel/${hotel.id}`} className="flex flex-col flex-1 min-h-0">
         {/* Image carousel */}
         <div
-          className="relative overflow-hidden touch-pan-y select-none cursor-grab active:cursor-grabbing"
+          className="relative overflow-hidden [touch-action:pan-x_pan-y] select-none cursor-grab active:cursor-grabbing w-full shrink-0"
           style={{ height: theme.sizes.cardImageHeight }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
@@ -162,7 +159,7 @@ export default function HotelCard({ hotel, index = 0 }: HotelCardProps) {
               loading="lazy"
               decoding="async"
               draggable={false}
-              className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-110 ${
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ease-out pointer-events-none ${
                 i === safeCurrent ? 'opacity-100' : 'opacity-0'
               }`}
             />
@@ -227,26 +224,26 @@ export default function HotelCard({ hotel, index = 0 }: HotelCardProps) {
             </div>
           )}
 
-          {/* Price on image */}
-          <div className="absolute bottom-3 right-3">
-            <div className="bg-white/95 backdrop-blur-md rounded-xl px-3 py-2 shadow-lg">
+          {/* Price on image — کادر قیمت روی موبایل کوچک‌تر */}
+          <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3">
+            <div className="bg-white/95 backdrop-blur-md rounded-lg sm:rounded-xl px-2 py-1 sm:px-3 sm:py-2 shadow-lg">
               <div className="flex items-baseline gap-1">
-                <span className="text-lg font-bold" style={{ color: theme.colors.priceBadgeColor }}>
+                <span className="text-sm sm:text-lg font-bold" style={{ color: theme.colors.priceBadgeColor }}>
                   {hotel.pricePerNight.toLocaleString('fa-IR')}
                 </span>
-                <span className="text-xs text-gray-500">تومان</span>
+                <span className="text-[10px] sm:text-xs text-gray-500">تومان</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-5">
+        {/* Content — ارتفاع کادر سفید در همهٔ کارت‌ها یکسان */}
+        <div className="p-5 flex-1 flex flex-col">
           {/* Header */}
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex-1 min-w-0">
               <h3
-                className="font-bold text-base leading-tight mb-2 truncate"
+                className="font-bold text-sm sm:text-base leading-tight mb-2 truncate"
                 style={{ color: theme.colors.textPrimary }}
               >
                 {hotel.name}
@@ -262,31 +259,31 @@ export default function HotelCard({ hotel, index = 0 }: HotelCardProps) {
             <span className="text-xs truncate">{hotel.city}، {hotel.address}</span>
           </div>
 
-          {/* Amenities */}
-          <div className="flex flex-wrap gap-1.5 mb-4">
+          {/* Amenities — تک‌خطی تا ارتفاع محتوا ثابت بماند */}
+          <div className="flex flex-nowrap gap-1.5 mb-4 overflow-hidden">
             {hotel.amenities.slice(0, 3).map((amenity) => (
               <span
                 key={amenity}
-                className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-lg text-xs text-gray-600"
+                className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-lg text-xs text-gray-600 shrink-0 whitespace-nowrap"
               >
                 {amenityIcons[amenity] || null}
                 {amenity}
               </span>
             ))}
             {hotel.amenities.length > 3 && (
-              <span className="px-2 py-1 bg-gray-50 rounded-lg text-xs text-gray-500">
+              <span className="px-2 py-1 bg-gray-50 rounded-lg text-xs text-gray-500 shrink-0 whitespace-nowrap">
                 +{hotel.amenities.length - 3}
               </span>
             )}
           </div>
 
           {/* CTA */}
-          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+          <div className="flex items-center justify-between pt-4 mt-auto border-t border-gray-100">
             <span className="text-sm font-semibold" style={{ color: theme.colors.textPrimary }}>
               مشاهده و رزرو
             </span>
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+              className="w-8 h-8 rounded-full flex items-center justify-center"
               style={{
                 background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
                 boxShadow: `0 4px 12px ${theme.colors.primary}40`,
