@@ -7,6 +7,9 @@ import { sampleHotels, sampleReviews, sampleBookings, adminUser } from '../data/
 const DEMO_ADMIN_TOKEN = 'demo-admin-token';
 const DEMO_USER_TOKEN_PREFIX = 'demo-user-token:';
 const DEMO_USERS_KEY = 'mehrsafar-demo-users';
+const DEMO_HOTELS_KEY = 'mehrsafar-demo-hotels';
+const DEMO_REVIEWS_KEY = 'mehrsafar-demo-reviews';
+const DEMO_BOOKINGS_KEY = 'mehrsafar-demo-bookings';
 
 // ── کمک‌تابع‌های حالت دمو برای کاربران (ذخیره در localStorage) ──
 function loadDemoUsers(): SiteUser[] {
@@ -39,6 +42,90 @@ function demoUpdateUser(phone: string, data: { fullName: string; email: string; 
   list[i] = { ...list[i], ...data };
   saveDemoUsers(list);
   return list[i];
+}
+
+// ── ذخیره‌سازی محلی هتل‌ها / نظرات / رزروها (حالت دمو بدون بک‌اند) ──
+function loadDemoHotels(): Hotel[] {
+  try {
+    const raw = localStorage.getItem(DEMO_HOTELS_KEY);
+    if (raw) return JSON.parse(raw) as Hotel[];
+  } catch { /* ignore */ }
+  return sampleHotels;
+}
+function saveDemoHotels(list: Hotel[]) {
+  try { localStorage.setItem(DEMO_HOTELS_KEY, JSON.stringify(list)); } catch { /* ignore */ }
+}
+function loadDemoReviews(): UserReview[] {
+  try {
+    const raw = localStorage.getItem(DEMO_REVIEWS_KEY);
+    if (raw) return JSON.parse(raw) as UserReview[];
+  } catch { /* ignore */ }
+  return sampleReviews;
+}
+function saveDemoReviews(list: UserReview[]) {
+  try { localStorage.setItem(DEMO_REVIEWS_KEY, JSON.stringify(list)); } catch { /* ignore */ }
+}
+function loadDemoBookings(): Booking[] {
+  try {
+    const raw = localStorage.getItem(DEMO_BOOKINGS_KEY);
+    if (raw) return JSON.parse(raw) as Booking[];
+  } catch { /* ignore */ }
+  return sampleBookings;
+}
+function saveDemoBookings(list: Booking[]) {
+  try { localStorage.setItem(DEMO_BOOKINGS_KEY, JSON.stringify(list)); } catch { /* ignore */ }
+}
+
+// ── همگام‌سازی کارت‌های هتل با ویرایش/حذف هتل ──────────────────────────────
+// کارت‌های هتل یک کپی (snapshot) از داده‌ی هتل را در خود نگه می‌دارند تا روی
+// سایت منتشرشده (که لیست هتل‌های اضافه‌شده را ندارد) هم نمایش داده شوند. وقتی
+// مدیر هتل را ویرایش می‌کند، باید این snapshotها هم به‌روز شوند وگرنه کارت
+// همان داده‌ی قدیمی را نشان می‌دهد.
+const CARD_GROUPS_KEY = 'mehrsafar-card-groups';
+function syncHotelInCards(hotel: Hotel) {
+  try {
+    const raw = localStorage.getItem(CARD_GROUPS_KEY);
+    if (!raw) return;
+    const groups = JSON.parse(raw) as Array<{ cards?: Array<Record<string, unknown>> }>;
+    let changed = false;
+    for (const g of groups) {
+      if (!Array.isArray(g?.cards)) continue;
+      for (const c of g.cards) {
+        const embedded = c.hotel as Hotel | undefined;
+        if (embedded && embedded.id === hotel.id) {
+          c.hotel = { ...embedded, ...hotel };
+          c.title = hotel.name;
+          c.subtitle = hotel.city;
+          c.image = (hotel.images || []).find(Boolean) || (c.image as string) || '';
+          c.link = `/hotel/${hotel.id}`;
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      localStorage.setItem(CARD_GROUPS_KEY, JSON.stringify(groups));
+      // به کانتکست کارت‌ها اطلاع بده تا فوراً از روی حافظه بازخوانی کند.
+      window.dispatchEvent(new Event('mehrsafar-cards-updated'));
+    }
+  } catch { /* ignore */ }
+}
+function removeHotelFromCards(id: number) {
+  try {
+    const raw = localStorage.getItem(CARD_GROUPS_KEY);
+    if (!raw) return;
+    const groups = JSON.parse(raw) as Array<{ cards?: Array<Record<string, unknown>> }>;
+    let changed = false;
+    for (const g of groups) {
+      if (!Array.isArray(g?.cards)) continue;
+      const before = g.cards.length;
+      g.cards = g.cards.filter((c) => !((c.hotel as Hotel | undefined)?.id === id));
+      if (g.cards.length !== before) changed = true;
+    }
+    if (changed) {
+      localStorage.setItem(CARD_GROUPS_KEY, JSON.stringify(groups));
+      window.dispatchEvent(new Event('mehrsafar-cards-updated'));
+    }
+  } catch { /* ignore */ }
 }
 
 interface Filters {
@@ -116,8 +203,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // بک‌اند در دسترس نیست → حالت دمو با داده‌های داخلی
         console.warn('Backend unavailable, falling back to demo data', e);
         if (alive) {
-          setHotels(sampleHotels);
-          setReviews(sampleReviews);
+          setHotels(loadDemoHotels());
+          setReviews(loadDemoReviews());
         }
       } finally {
         if (alive) setLoading(false);
@@ -144,14 +231,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const refreshBookings = useCallback(async () => {
     const adminTok = tokenStore.getAdmin();
     const userTok = tokenStore.getUser();
-    if (adminTok === DEMO_ADMIN_TOKEN) { setBookings(sampleBookings); return; }
+    if (adminTok === DEMO_ADMIN_TOKEN) { setBookings(loadDemoBookings()); return; }
+    if (userTok.startsWith(DEMO_USER_TOKEN_PREFIX)) {
+      const phone = userTok.slice(DEMO_USER_TOKEN_PREFIX.length);
+      setBookings(loadDemoBookings().filter((b) => b.guestPhone === phone));
+      return;
+    }
     try {
       if (adminTok) setBookings(await api.allBookings(adminTok));
       else if (userTok) setBookings(await api.myBookings(userTok));
       else setBookings([]);
     } catch (e) {
       // حالت دمو: نمایش رزروهای نمونه برای مدیر
-      if (adminTok) setBookings(sampleBookings); else setBookings([]);
+      if (adminTok) setBookings(loadDemoBookings()); else setBookings([]);
       console.warn('Bookings API unavailable, using demo data', e);
     }
   }, []);
@@ -185,6 +277,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ── Bookings ──
   const addBooking = useCallback(async (booking: Booking): Promise<Result> => {
+    const adminTok = tokenStore.getAdmin();
+    const userTok = tokenStore.getUser();
+    // حالت دمو (بدون بک‌اند): ذخیره‌ی محلی رزرو
+    if (adminTok === DEMO_ADMIN_TOKEN || userTok.startsWith(DEMO_USER_TOKEN_PREFIX) || (!adminTok && !userTok)) {
+      const all = loadDemoBookings();
+      const exists = all.some((b) => b.id === booking.id);
+      const next = exists ? all : [booking, ...all];
+      saveDemoBookings(next);
+      await refreshBookings();
+      return { success: true, message: 'رزرو با موفقیت ثبت شد.' };
+    }
     try {
       await api.createBooking({
         hotelId: booking.hotelId,
@@ -206,6 +309,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateBookingStatus = useCallback(async (id: number, status: Booking['status']) => {
     const tok = tokenStore.getAdmin();
     if (!tok) return;
+    if (tok === DEMO_ADMIN_TOKEN) {
+      const next = loadDemoBookings().map((b) => (b.id === id ? { ...b, status } : b));
+      saveDemoBookings(next);
+      setBookings(next);
+      return;
+    }
     try {
       await api.updateBookingStatus(id, status, tok);
       setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
@@ -217,26 +326,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       await api.createReview({ hotelId: review.hotelId, userName: review.userName, rating: review.rating, comment: review.comment });
       setReviews(await api.listReviews());
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      // حالت دمو (بدون بک‌اند): ذخیره‌ی محلی نظر
+      console.warn('Reviews API unavailable, storing review locally', e);
+      const next = [{ ...review }, ...loadDemoReviews()];
+      saveDemoReviews(next);
+      setReviews(next);
+    }
   }, []);
 
   // ── Hotels (admin) ──
   const addHotel = useCallback(async (hotel: Hotel) => {
     const tok = tokenStore.getAdmin();
     if (!tok) return;
+    if (tok === DEMO_ADMIN_TOKEN) {
+      const current = loadDemoHotels();
+      const id = (!hotel.id || current.some((h) => h.id === hotel.id))
+        ? (current.length ? Math.max(...current.map((h) => h.id)) + 1 : 1)
+        : hotel.id;
+      const next = [...current, { ...hotel, id }];
+      saveDemoHotels(next);
+      setHotels(next);
+      return;
+    }
     try { await api.createHotel(hotel, tok); await refreshHotels(); } catch (e) { console.error(e); alert(e instanceof Error ? e.message : 'خطا'); }
   }, [refreshHotels]);
 
   const updateHotel = useCallback(async (hotel: Hotel) => {
     const tok = tokenStore.getAdmin();
     if (!tok) return;
-    try { await api.updateHotel(hotel.id, hotel, tok); await refreshHotels(); } catch (e) { console.error(e); alert(e instanceof Error ? e.message : 'خطا'); }
+    if (tok === DEMO_ADMIN_TOKEN) {
+      const next = loadDemoHotels().map((h) => (h.id === hotel.id ? { ...hotel } : h));
+      saveDemoHotels(next);
+      setHotels(next);
+      syncHotelInCards(hotel);
+      return;
+    }
+    try { await api.updateHotel(hotel.id, hotel, tok); await refreshHotels(); syncHotelInCards(hotel); } catch (e) { console.error(e); alert(e instanceof Error ? e.message : 'خطا'); }
   }, [refreshHotels]);
 
   const deleteHotel = useCallback(async (id: number) => {
     const tok = tokenStore.getAdmin();
     if (!tok) return;
-    try { await api.deleteHotel(id, tok); setHotels((prev) => prev.filter((h) => h.id !== id)); } catch (e) { console.error(e); }
+    if (tok === DEMO_ADMIN_TOKEN) {
+      const next = loadDemoHotels().filter((h) => h.id !== id);
+      saveDemoHotels(next);
+      setHotels(next);
+      removeHotelFromCards(id);
+      return;
+    }
+    try { await api.deleteHotel(id, tok); setHotels((prev) => prev.filter((h) => h.id !== id)); removeHotelFromCards(id); } catch (e) { console.error(e); }
   }, []);
 
   // ── Admin auth ──

@@ -41,6 +41,14 @@ export function CardsProvider({ children }: { children: ReactNode }) {
     }
   }, [groups]);
 
+  // وقتی ویرایش/حذف هتل، snapshotهای داخل کارت‌ها را در localStorage به‌روز می‌کند،
+  // گروه‌ها را دوباره از حافظه بخوان تا state درون‌حافظه هم تازه شود.
+  useEffect(() => {
+    const reload = () => setGroups(load());
+    window.addEventListener('mehrsafar-cards-updated', reload);
+    return () => window.removeEventListener('mehrsafar-cards-updated', reload);
+  }, []);
+
   const addGroup = (page: string = '/') => {
     const id = uid();
     setGroups((g) => [...g, { id, page, title: 'بخش جدید', layout: 'horizontal', cardHeight: 208, minCardWidth: 280, cards: [] }]);

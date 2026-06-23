@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useCards } from '../context/CardsContext';
+import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { SiteCard } from '../types';
 import HotelCard from './HotelCard';
@@ -64,6 +65,7 @@ function CardLink({
 
 export default function CardSections({ page = '/' }: { page?: string }) {
   const { groups } = useCards();
+  const { hotels } = useApp();
   const { theme } = useTheme();
 
   // Only render the card sections that belong to this page (legacy groups → home "/").
@@ -112,8 +114,10 @@ export default function CardSections({ page = '/' }: { page?: string }) {
                   }
                 >
                   {card.hotel ? (
-                    // کارت کامل هتل — دقیقاً مثل کارت‌های «هتل‌های ویژه»
-                    <HotelCard hotel={card.hotel} index={i} />
+                    // کارت کامل هتل — همیشه از روی نسخهٔ زندهٔ هتل (بر اساس id) رندر می‌شود
+                    // تا هر ویرایشِ هتل بلافاصله روی کارت اعمال شود. اگر هتل در لیست
+                    // نبود (مثلاً حذف‌شده یا بازدیدکنندهٔ بدون آن داده)، به snapshot ذخیره‌شده برمی‌گردیم.
+                    <HotelCard hotel={hotels.find((h) => h.id === card.hotel!.id) ?? card.hotel} index={i} />
                   ) : (
                     <CardLink
                       card={card}
