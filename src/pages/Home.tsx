@@ -69,7 +69,7 @@ export default function Home() {
             {/* Hero banner image */}
             <div className="relative">
               <img
-                src={heroBg}
+                src={theme.heroImage || heroBg}
                 alt=""
                 className="hero-banner-img w-full object-cover rounded-3xl select-none pointer-events-none"
               />

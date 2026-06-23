@@ -1,15 +1,16 @@
 import { useState, useRef } from 'react';
 import {
   Palette, Type, Ruler, FileText, Plus, Trash2, RotateCcw,
-  ChevronDown, ChevronUp, Eye, Monitor, Smartphone, Tablet, X, Upload, Link2, Globe
+  ChevronDown, ChevronUp, Eye, Monitor, Smartphone, Tablet, X, Upload, Link2, Globe, Image as ImageIcon
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import ColorPicker from './ColorPicker';
 import DraggableSize from './DraggableSize';
 import { motion, AnimatePresence } from 'framer-motion';
 import { downloadPublishedConfig } from '../../utils/sitePublish';
+import heroBgPreview from '../../assets/hero-bg.jpeg';
 
-type Section = 'colors' | 'sizes' | 'fonts' | 'texts';
+type Section = 'colors' | 'sizes' | 'fonts' | 'texts' | 'hero';
 
 const presetThemes = [
   {
@@ -61,6 +62,7 @@ const builtInFonts = [
 export default function AppearancePanel() {
   const {
     theme, updateColors, updateSizes, updateFonts, updateTexts,
+    updateHeroImage, resetHeroImage,
     addCustomFont, uploadFont, removeCustomFont, resetTheme
   } = useTheme();
 
@@ -69,7 +71,24 @@ export default function AppearancePanel() {
     sizes: false,
     fonts: false,
     texts: false,
+    hero: false,
   });
+
+  const heroFileInputRef = useRef<HTMLInputElement>(null);
+  const [heroUploading, setHeroUploading] = useState(false);
+
+  const handleHeroUpload = async (file: File | null) => {
+    if (!file) return;
+    setHeroUploading(true);
+    try {
+      await updateHeroImage(file);
+    } catch (e) {
+      console.warn('بارگذاری تصویر هیرو ناموفق بود.', e);
+    } finally {
+      setHeroUploading(false);
+      if (heroFileInputRef.current) heroFileInputRef.current.value = '';
+    }
+  };
 
   const [previewMode, setPreviewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [showPreview, setShowPreview] = useState(false);
@@ -535,6 +554,67 @@ export default function AppearancePanel() {
                     <p style={{ fontFamily: `'${theme.fonts.primary}'`, fontSize: `${theme.fonts.smallSize}px` }} className="text-gray-400 mt-1">
                       متن کوچک - ۱۴۰۴/۰۱/۰۱
                     </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ── HERO IMAGE ── */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <SectionHeader section="hero" icon={<ImageIcon className="w-5 h-5" />} label="تصویر هیرو" />
+          <AnimatePresence>
+            {openSections.hero && (
+              <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+                <div className="p-4 pt-0 space-y-3">
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    تصویر بنر بالای صفحه اصلی را عوض کنید. قالب و چیدمان ثابت می‌ماند؛ فقط عکس جایگزین می‌شود.
+                    برای بهترین نتیجه از تصویری با نسبت عریض (مثلاً ۱۹۲۰×۶۰۰) استفاده کنید.
+                  </p>
+
+                  {/* Current hero preview */}
+                  <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+                    <img
+                      src={theme.heroImage || heroBgPreview}
+                      alt="پیش‌نمایش تصویر هیرو"
+                      className="w-full object-cover"
+                      style={{ height: 120 }}
+                    />
+                    <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full bg-black/50 text-white">
+                      {theme.heroImage ? 'تصویر سفارشی' : 'تصویر پیش‌فرض'}
+                    </span>
+                  </div>
+
+                  <input
+                    ref={heroFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleHeroUpload(e.target.files?.[0] ?? null)}
+                  />
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => heroFileInputRef.current?.click()}
+                      disabled={heroUploading}
+                      className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors disabled:opacity-60"
+                    >
+                      <Upload className="w-4 h-4" />
+                      {heroUploading ? 'در حال بارگذاری…' : 'انتخاب تصویر جدید'}
+                    </button>
+                    {theme.heroImage && (
+                      <button
+                        type="button"
+                        onClick={resetHeroImage}
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-bold hover:bg-gray-50 transition-colors"
+                        title="بازگشت به تصویر پیش‌فرض"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        پیش‌فرض
+                      </button>
+                    )}
                   </div>
                 </div>
               </motion.div>

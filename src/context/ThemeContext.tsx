@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { fileToCompressedDataURL } from '../utils/image';
 
 export interface ThemeColors {
   primary: string;
@@ -79,6 +80,9 @@ export interface SiteTheme {
   sizes: ThemeSizes;
   fonts: ThemeFonts;
   texts: ThemeTexts;
+  // Optional hero banner image override (compressed data URL).
+  // Empty string => fall back to the built-in default hero image.
+  heroImage: string;
 }
 
 const defaultTheme: SiteTheme = {
@@ -143,6 +147,7 @@ const defaultTheme: SiteTheme = {
     statsBookings: '+۱۰هزار',
     statsSatisfaction: '۹۸٪',
   },
+  heroImage: '',
 };
 
 interface ThemeContextType {
@@ -151,6 +156,9 @@ interface ThemeContextType {
   updateSizes: (sizes: Partial<ThemeSizes>) => void;
   updateFonts: (fonts: Partial<ThemeFonts>) => void;
   updateTexts: (texts: Partial<ThemeTexts>) => void;
+  updateHeroImage: (file: File) => Promise<void>;
+  setHeroImage: (dataUrl: string) => void;
+  resetHeroImage: () => void;
   addCustomFont: (name: string, url: string) => void;
   uploadFont: (name: string, file: File) => Promise<void>;
   removeCustomFont: (id: string) => void;
@@ -319,6 +327,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme((p) => ({ ...p, texts: { ...p.texts, ...texts } }));
   }, []);
 
+  // Replace the hero banner image. The file is downscaled + compressed to a
+  // data URL (same pipeline used elsewhere) so it stays small enough for
+  // localStorage and won't visually overflow the layout.
+  const setHeroImage = useCallback((dataUrl: string) => {
+    setTheme((p) => ({ ...p, heroImage: dataUrl }));
+  }, []);
+  const updateHeroImage = useCallback(async (file: File) => {
+    const dataUrl = await fileToCompressedDataURL(file, 1920, 0.85);
+    setTheme((p) => ({ ...p, heroImage: dataUrl }));
+  }, []);
+  const resetHeroImage = useCallback(() => {
+    setTheme((p) => ({ ...p, heroImage: '' }));
+  }, []);
+
   const addCustomFont = useCallback((name: string, url: string) => {
     const id = `font-${Date.now()}`;
     setTheme((p) => ({
@@ -394,7 +416,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, updateColors, updateSizes, updateFonts, updateTexts, addCustomFont, uploadFont, removeCustomFont, resetTheme, getCSSVar, isVisualEditing, setIsVisualEditing }}>
+    <ThemeContext.Provider value={{ theme, updateColors, updateSizes, updateFonts, updateTexts, updateHeroImage, setHeroImage, resetHeroImage, addCustomFont, uploadFont, removeCustomFont, resetTheme, getCSSVar, isVisualEditing, setIsVisualEditing }}>
       {children}
     </ThemeContext.Provider>
   );
